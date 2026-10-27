@@ -13,15 +13,15 @@ if (!modelSrc) {
 
 const transcript = readFileSync('test-audio/sample-en-16k.transcript.txt', 'utf8').trim();
 
-const SYSTEM = `You are a meeting-notes assistant. From the transcript you are given, produce:
-1. A short title (max 8 words).
-2. A 2-sentence summary.
-3. Action items: one line per task someone must do, in the form "- person: task". Include every task mentioned. If there are truly no tasks, write "- none".
-Answer in plain text (no markdown bold) with exactly these headings: TITLE, SUMMARY, ACTIONS.`;
+const SYSTEM = `You convert meeting transcripts into notes. Output exactly three plain-text sections, nothing else:
+TITLE: short title, max 8 words
+SUMMARY: two sentences
+ACTION ITEMS: one line per task someone must do, format "person: task"
+Before writing ACTION ITEMS, check the transcript for unfinished work, bugs, deadlines, demos, follow-ups and renewals. Include EVERY task mentioned. Only if there is truly nothing, write "no tasks".`;
 
 const history = [
     { role: 'system', content: SYSTEM },
-    { role: 'user', content: `Transcript:\n${transcript}\n\nNotes:` },
+    { role: 'user', content: `Transcript:\n${transcript}\n\nJSON: /no_think` },
 ];
 
 try {
