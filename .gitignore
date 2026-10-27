@@ -1,0 +1,7 @@
+node_modules/
+*.log
+bench-*.json
+notes/
+!test-audio/*.wav
+test-audio/*.transcript.txt
+.DS_Store
