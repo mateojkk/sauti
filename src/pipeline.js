@@ -139,7 +139,7 @@ function cleanActions(actions) {
     const lines = actions
         .map((a) => String(a).replace(/^[-*\d.\s"']+/, '').trim())
         .filter(Boolean)
-        .filter((a) => !/^person\s*:/i.test(a) && !/^<who>/i.test(a) && !/^(none|no tasks?)\b/i.test(a) && !/["']\s*:/.test(a));
+        .filter((a) => !/^(the\s+)?person\s*:/i.test(a) && !/^<who>/i.test(a) && !/^(none|no tasks?)\b/i.test(a) && !/["']\s*:/.test(a));
     // Merge the model's split "Who: X" / "What: Y" pairs into "X: Y",
     // split mid-line enumerators ("...home. 2. Call..."), then dedupe.
     const merged = [];

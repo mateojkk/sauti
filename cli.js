@@ -29,7 +29,7 @@ if (cmd === 'process') {
     for (const a of note.actions) console.log(`  - ${a}`);
     console.log(`\nTiming: asr-load ${(note.timing.loadAsrMs / 1000).toFixed(1)}s · transcribe ${(note.timing.transcribeMs / 1000).toFixed(1)}s · llm-load ${(note.timing.loadLlmMs / 1000).toFixed(1)}s · llm ${(note.timing.llmMs / 1000).toFixed(1)}s @ ${note.timing.tokensPerSec} tok/s`);
 } else if (cmd === 'list') {
-    const files = (await readdir('notes').catch(() => [])).filter((f) => f.endsWith('.json')).sort();
+    const files = (await readdir('notes').catch(() => [])).filter((f) => f.endsWith('.json') && f !== 'vectors.json').sort();
     if (files.length === 0) {
         console.log('(no notes yet)');
     } else {
