@@ -11,8 +11,9 @@ import {
     completion,
     unloadModel,
 } from '@qvac/sdk';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, writeFile, unlink } from 'node:fs/promises';
 import { join } from 'node:path';
+import { removeVector } from './search.js';
 
 export const MODELS = {
     asr: 'WHISPER_BASE_Q8_0',          // 82 MB, multilingual (sw supported, weak)
@@ -167,6 +168,21 @@ function cleanActions(actions) {
         seen.add(key);
         return true;
     });
+}
+
+/** Delete a note's markdown, JSON and search vector. */
+export async function deleteNote(id) {
+    const safe = String(id);
+    if (!/^[0-9T-]+Z$/.test(safe)) throw new Error(`invalid note id: ${safe}`);
+    let removed = false;
+    for (const ext of ['md', 'json']) {
+        try {
+            await unlink(join(NOTES_DIR, `${safe}.${ext}`));
+            removed = true;
+        } catch { /* already gone */ }
+    }
+    await removeVector(safe).catch(() => false);
+    return removed;
 }
 
 /** Save a note as markdown + index entry. Returns the note id. */

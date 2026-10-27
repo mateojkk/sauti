@@ -68,9 +68,14 @@ h2 { margin: 0 0 12px; font-size: 14px; text-transform: uppercase; letter-spacin
 .stage { margin-top: 6px; color: var(--dim); font-size: 13px; }
 
 .notes-list { display: flex; flex-direction: column; gap: 10px; max-height: 70vh; overflow: auto; }
-.note {
-    border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; cursor: pointer;
+.note { position: relative; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; cursor: pointer; }
+.note .del {
+    position: absolute; top: 8px; right: 8px;
+    background: 0; border: 0; cursor: pointer; opacity: 0; transition: opacity .15s;
+    font-size: 13px;
 }
+.note:hover .del { opacity: .65; }
+.note .del:hover { opacity: 1; }
 .note:hover { border-color: var(--accent); }
 .note .t { font-weight: 600; }
 .note .s { color: var(--dim); font-size: 13px; margin-top: 2px; }

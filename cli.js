@@ -3,7 +3,7 @@
 //   node cli.js process <audio.wav> [--lang en|sw]   transcribe + summarize + save a note
 //   node cli.js list                                 list saved notes
 //   node cli.js show <id>                            print one note's markdown
-import { processAudio } from './src/pipeline.js';
+import { processAudio, deleteNote } from './src/pipeline.js';
 import { buildIndex, search } from './src/search.js';
 import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -41,6 +41,10 @@ if (cmd === 'process') {
 } else if (cmd === 'show') {
     if (!arg) die('missing note id');
     console.log(await readFile(join('notes', `${arg}.md`), 'utf8'));
+} else if (cmd === 'delete') {
+    if (!arg) die('missing note id');
+    const removed = await deleteNote(arg);
+    console.log(removed ? `🗑 deleted ${arg}` : `✖ no such note: ${arg}`);
 } else if (cmd === 'reindex') {
     const all = [arg, ...rest].filter(Boolean);
     const { indexed, total } = await buildIndex({ force: all.includes('--force') });

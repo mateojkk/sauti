@@ -7,7 +7,7 @@ import { createServer } from 'node:http';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join, extname } from 'node:path';
-import { processAudio } from './pipeline.js';
+import { processAudio, deleteNote } from './pipeline.js';
 import { buildIndex, search } from './search.js';
 
 const PORT = 8787;
@@ -49,6 +49,12 @@ const server = createServer(async (req, res) => {
                 notes.push({ id: n.id, title: n.title, summary: n.summary, actions: n.actions, createdAt: n.createdAt, language: n.language });
             }
             return json(res, 200, { notes });
+        }
+
+        if (url.pathname.startsWith('/api/note/') && req.method === 'DELETE') {
+            const id = url.pathname.split('/').pop();
+            const removed = await deleteNote(id);
+            return json(res, removed ? 200 : 404, { removed });
         }
 
         if (url.pathname.startsWith('/api/note/') && req.method === 'GET') {

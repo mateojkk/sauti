@@ -1,6 +1,6 @@
 // ASR validation: Whisper (qvac-fabric-speech.cpp) on a 16 kHz mono WAV.
 // Usage: node scripts/asr-test.js test-audio/sample-en-16k.wav en
-import { loadModel, unloadModel, transcribe, WHISPER_BASE_Q8_0 } from '@qvac/sdk';
+import { loadModel, unloadModel, transcribe, WHISPER_SMALL_Q8_0 } from '@qvac/sdk';
 import { writeFileSync } from 'node:fs';
 
 const [audioPath = 'test-audio/sample-en-16k.wav', language = 'en'] = process.argv.slice(2);
@@ -8,7 +8,7 @@ const [audioPath = 'test-audio/sample-en-16k.wav', language = 'en'] = process.ar
 try {
     const t0 = Date.now();
     const modelId = await loadModel({
-        modelSrc: WHISPER_BASE_Q8_0,
+        modelSrc: WHISPER_SMALL_Q8_0,
         modelType: 'whisper',
         modelConfig: {
             language,

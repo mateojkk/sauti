@@ -27,11 +27,17 @@ async function loadNotes() {
         const el = document.createElement('div');
         el.className = 'note';
         el.innerHTML = `
+            <button class="del" title="delete note">🗑</button>
             <div class="t"></div>
             <div class="s"></div>
             <div class="meta">${new Date(n.createdAt).toLocaleString()} <span class="badge">${n.language}</span> ${n.actions.length} action(s)</div>`;
         el.querySelector('.t').textContent = n.title || '(untitled)';
         el.querySelector('.s').textContent = n.summary || '';
+        el.querySelector('.del').onclick = (e) => {
+            e.stopPropagation();
+            if (!confirm(`Delete "${n.title}"? This cannot be undone.`)) return;
+            fetch(`/api/note/${n.id}`, { method: 'DELETE' }).then(loadNotes);
+        };
         el.onclick = () => openNote(n.id);
         list.appendChild(el);
     }

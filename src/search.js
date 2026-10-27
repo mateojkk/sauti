@@ -12,7 +12,7 @@ import { join } from 'node:path';
 
 export const EMBED_MODEL = 'EMBEDDINGGEMMA_300M_Q4_0';
 const NOTES_DIR = 'notes';
-const VECTORS_FILE = join(NOTES_DIR, 'vectors.json');
+export const VECTORS_FILE = join(NOTES_DIR, 'vectors.json');
 
 function cosineSimilarity(a, b) {
     let dot = 0;
@@ -37,6 +37,15 @@ async function loadVectors() {
     } catch {
         return {};
     }
+}
+
+/** Drop one note's vector from the index (used when a note is deleted). */
+export async function removeVector(id) {
+    const vectors = await loadVectors();
+    if (!(id in vectors)) return false;
+    delete vectors[id];
+    await writeFile(VECTORS_FILE, JSON.stringify(vectors));
+    return true;
 }
 
 /**
