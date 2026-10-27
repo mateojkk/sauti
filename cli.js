@@ -4,6 +4,7 @@
 //   node cli.js list                                 list saved notes
 //   node cli.js show <id>                            print one note's markdown
 import { processAudio } from './src/pipeline.js';
+import { buildIndex, search } from './src/search.js';
 import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
@@ -11,7 +12,7 @@ const [cmd, arg, ...rest] = process.argv.slice(2);
 
 function die(msg) {
     console.error(`✖ ${msg}`);
-    console.error('Usage: node cli.js process <audio.wav> [--lang en|sw] | list | show <id>');
+    console.error('Usage: node cli.js process <audio.wav> [--lang en|sw] | list | show <id> | reindex | search "<query>"');
     process.exit(1);
 }
 
@@ -40,6 +41,26 @@ if (cmd === 'process') {
 } else if (cmd === 'show') {
     if (!arg) die('missing note id');
     console.log(await readFile(join('notes', `${arg}.md`), 'utf8'));
+} else if (cmd === 'reindex') {
+    const all = [arg, ...rest].filter(Boolean);
+    const { indexed, total } = await buildIndex({ force: all.includes('--force') });
+    console.log(`✅ Index: ${indexed} newly embedded, ${total} total in vectors.json`);
+} else if (cmd === 'search') {
+    const all = [arg, ...rest].filter(Boolean);
+    const query = all.find((a) => !a.startsWith('--'));
+    if (!query) die('missing query');
+    const kIdx = all.indexOf('--k');
+    const k = kIdx !== -1 ? Number(all[kIdx + 1]) : 5;
+    console.log(`▸ Searching: "${query}"`);
+    const results = await search(query, { k });
+    if (results.length === 0) {
+        console.log('(empty index — run: node cli.js reindex)');
+    } else {
+        for (const r of results) {
+            console.log(`${(r.score + 1).toFixed(4)}  ${r.id}  ${r.title ?? '(missing note file)'}`);
+            console.log(`    ${String(r.summary ?? '').slice(0, 110)}`);
+        }
+    }
 } else {
     die(`unknown command: ${cmd}`);
 }
