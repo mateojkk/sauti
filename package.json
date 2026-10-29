@@ -2,9 +2,11 @@
   "name": "sauti",
   "version": "1.0.0",
   "description": "Offline voice notes: cloud AI workflow migrated on-device with QVAC",
-  "main": "index.js",
+  "main": "main.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node src/server.js",
+    "app": "electron .",
     "quickstart": "node quickstart.js"
   },
   "keywords": [],
@@ -13,5 +15,8 @@
   "type": "module",
   "dependencies": {
     "@qvac/sdk": "^0.22.0"
+  },
+  "devDependencies": {
+    "electron": "^45.1.0"
   }
 }
