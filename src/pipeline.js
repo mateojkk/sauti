@@ -65,8 +65,10 @@ Rules: use only names and tasks actually spoken in the transcript — never inve
     const genMs = Date.now() - t0;
     const cleaned = stripThinking(out);
     const parsed = parseNotes(cleaned);
-    // Small-model guardrails: cap the title, drop empty summary.
+    // Small-model guardrails: cap the title, drop empty summary, never blank.
     parsed.title = parsed.title.split(/\s+/).slice(0, 8).join(' ');
+    if (!parsed.title) parsed.title = 'Voice note';
+    if (!parsed.summary) parsed.summary = transcript.slice(0, 140);
     return { ...parsed, genMs, tokens, tokensPerSec: +(tokens / (genMs / 1000)).toFixed(1) };
 }
 

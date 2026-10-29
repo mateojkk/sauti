@@ -12,12 +12,14 @@ No API keys, no uploads, no internet after setup.
 ## Status
 
 - [x] QVAC SDK validated on target hardware (Node.js, Linux x64)
-- [x] Whisper ASR validated (EN; 15.4 s audio transcribed in 1.7 s)
-- [ ] Full pipeline (transcribe → summarize → note)
-- [ ] Semantic search over past notes (local embeddings)
-- [ ] Local web UI
-- [ ] Cloud-vs-device tradeoff benchmarks
-- [ ] Offline demo video
+- [x] Speech-to-text (Whisper Q8_0 tiers; EN + multilingual)
+- [x] Local LLM meeting notes (Qwen3-600M-instruct, JSON /no_think): title, 2-sentence summary, action items
+- [x] Notes saved to disk (`notes/*.md` + `.json`, with per-stage timings) + delete
+- [x] Semantic search over past notes (embeddinggemma-300M, local vectors, 4/4 retrieval accuracy)
+- [x] Local web UI: record (browser PCM→16 kHz WAV) or upload → note; list; view; search — zero external assets
+- [ ] ASR model-tier decision on real-user voice (base vs small vs large-v3-turbo)
+- [ ] Demo video (recorded with internet disconnected)
+- [ ] DoraHacks submission
 
 ## Quickstart
 
