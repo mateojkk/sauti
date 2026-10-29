@@ -46,7 +46,7 @@ const server = createServer(async (req, res) => {
             const notes = [];
             for (const f of files) {
                 const n = JSON.parse(await readFile(join('notes', f), 'utf8'));
-                notes.push({ id: n.id, title: n.title, summary: n.summary, actions: n.actions, createdAt: n.createdAt, language: n.language });
+                notes.push({ id: n.id, title: n.title, summary: n.summary, actions: n.actions, createdAt: n.createdAt, language: n.language, durationSec: n.durationSec ?? null });
             }
             return json(res, 200, { notes });
         }
