@@ -113,10 +113,19 @@ let chunks = [];
 let t0 = 0;
 let timerId = 0;
 
-function downsample48to16(f32) {
-    const out = new Float32Array(Math.floor(f32.length / 3));
-    for (let i = 0; i < out.length; i++) {
-        out[i] = (f32[i * 3] + f32[i * 3 + 1] + f32[i * 3 + 2]) / 3;
+/** Resample to 16 kHz by linear interpolation (correct for any input rate). */
+function resampleTo16k(f32, fromRate) {
+    if (fromRate === 16000) return f32;
+    const outLen = Math.round((f32.length * 16000) / fromRate);
+    const out = new Float32Array(outLen);
+    const step = fromRate / 16000;
+    for (let i = 0; i < outLen; i++) {
+        const pos = i * step;
+        const i0 = Math.floor(pos);
+        const frac = pos - i0;
+        const a = f32[i0] ?? 0;
+        const b = f32[i0 + 1] ?? a;
+        out[i] = a + (b - a) * frac;
     }
     return out;
 }
@@ -160,14 +169,19 @@ $('rec').onclick = async () => {
         let off = 0;
         for (const c of chunks) { merged.set(c, off); off += c.length; }
         chunks = [];
-        const wav16 = downsample48to16(merged);
+        const wav16 = resampleTo16k(merged, audioCtx.sampleRate);
         if (wav16.length < 8000) return alert('Recording too short.');
         const blob = new Blob([encodeWav(wav16, 16000)], { type: 'audio/wav' });
         await submitAudio(blob, 'recording.wav');
         return;
     }
     mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    audioCtx = new AudioContext();
+    // Prefer a 16 kHz context (native resample by the browser, no aliasing).
+    try {
+        audioCtx = new AudioContext({ sampleRate: 16000 });
+    } catch {
+        audioCtx = new AudioContext();
+    }
     const src = audioCtx.createMediaStreamSource(mediaStream);
     processor = audioCtx.createScriptProcessor(4096, 1, 1);
     chunks = [];
