@@ -66,7 +66,7 @@ async function loadNotes() {
             <button class="del" title="delete note">🗑</button>
             <div class="t"></div>
             <div class="s"></div>
-            <div class="meta">${dur ? `<span class="badge">${dur}</span>` : ''}<span class="badge">${n.language}</span><span class="rel"></span><span>· ${n.actions.length} action(s)</span></div>`;
+            <div class="meta">${dur ? `<span class="badge">${dur}</span>` : ''}<span class="badge">${n.language}</span><span class="rel"></span><span>· ${n.actions.length} action${n.actions.length === 1 ? '' : 's'}</span></div>`;
         el.querySelector('.t').textContent = n.title || '(untitled)';
         el.querySelector('.s').textContent = n.summary || '';
         el.querySelector('.rel').textContent = relDate(n.createdAt);
@@ -92,7 +92,7 @@ async function openNote(id) {
         <section><h4>Transcript</h4><div class="transcript"></div></section>
         <div class="models">asr: ${note.models.asr} · llm: ${note.models.llm} · transcribe ${(note.timing.transcribeMs / 1000).toFixed(1)}s · llm ${(note.timing.llmMs / 1000).toFixed(1)}s @ ${note.timing.tokensPerSec} tok/s</div>`;
     body.querySelector('h3').textContent = note.title;
-    body.querySelector('.when').textContent = `${relDate(note.createdAt)} · ${note.language} · ${fmtDur(note.durationSec)}${fmtDur(note.durationSec) ? ' · ' : ''}${note.audioFile.split('/').pop()}`;
+    body.querySelector('.when').textContent = `${relDate(note.createdAt)} · ${note.language} · ${fmtDur(note.durationSec)}${fmtDur(note.durationSec) ? ' · ' : ''}${(note.audioFile.split('/').pop() || '').replace(/^\d+-/, '')}`;
     const au = body.querySelector('#noteAudio');
     au.src = `/api/audio/${note.id}`;
     au.load();
@@ -104,8 +104,8 @@ async function openNote(id) {
     body.querySelector('.transcript').textContent = note.transcript;
     $('modal').classList.remove('hidden');
 }
-$('closeModal').onclick = () => $('modal').classList.add('hidden');
-$('modal').onclick = (e) => { if (e.target === $('modal')) $('modal').classList.add('hidden'); };
+$('closeModal').onclick = () => { $('noteAudio')?.pause(); $('modal').classList.add('hidden'); };
+$('modal').onclick = (e) => { if (e.target === $('modal')) { $('noteAudio')?.pause(); $('modal').classList.add('hidden'); } };
 
 // ---------- processing UI ----------
 function stage(name, pct) {
@@ -334,6 +334,18 @@ $('searchForm').onsubmit = async (e) => {
         if (btn) btn.disabled = false;
     }
 };
+
+// Try-chips: one click runs a real query (great for the demo video)
+for (const chip of document.querySelectorAll('.chip')) {
+    chip.onclick = () => {
+        $('q').value = chip.textContent.trim();
+        $('searchForm').requestSubmit();
+    };
+}
+
+// deep link: #note=<id> opens the note (used for fast visual checks)
+const hashNote = location.hash.match(/^#note=([\w-]+)$/);
+if (hashNote) openNote(hashNote[1]);
 
 // ---------- keyboard shortcuts (Voicenotes-style: R records, / searches) ----------
 loadNotes();

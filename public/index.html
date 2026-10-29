@@ -56,10 +56,18 @@
     <section id="searchPane" class="card">
         <h2><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> Search <span class="hint">semantic · on-device</span></h2>
         <form id="searchForm">
-            <input id="q" type="text" placeholder="Ask anything — who is demoing? deadlines?" autocomplete="off">
-            <button type="submit" class="btn-search">Search</button>
+            <div class="searchbar">
+                <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input id="q" type="text" placeholder="Ask anything…" autocomplete="off">
+                <button type="submit" class="btn-search">Search</button>
+            </div>
+            <div class="chips">
+                <button type="button" class="chip">Coffee</button>
+                <button type="button" class="chip">Wesley</button>
+                <button type="button" class="chip">Who loves coffee?</button>
+            </div>
         </form>
-        <div id="results"></div>
+        <div id="results"><div class="empty">Ask about your notes — Sauti ranks by meaning, not keywords. Everything stays on this machine.</div></div>
     </section>
 </main>
 
