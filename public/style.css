@@ -25,9 +25,16 @@
 @font-face {
     font-family: 'Inter';
     font-style: normal;
-    font-weight: 300 900;
+    font-weight: 300;
     font-display: swap;
-    src: url('/fonts/InterVar-latin.woff2') format('woff2');
+    src: url('/fonts/Inter-300.woff2') format('woff2');
+}
+@font-face {
+    font-family: 'Inter';
+    font-style: normal;
+    font-weight: 500;
+    font-display: swap;
+    src: url('/fonts/Inter-500.woff2') format('woff2');
 }
 * { box-sizing: border-box; }
 html { height: 100%; }
