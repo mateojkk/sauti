@@ -13,6 +13,9 @@
   "author": "",
   "license": "ISC",
   "type": "module",
+  "engines": {
+    "node": ">=22.5.0"
+  },
   "dependencies": {
     "@qvac/sdk": "^0.22.0"
   },

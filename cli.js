@@ -5,7 +5,8 @@
 //   node cli.js show <id>                            print one note's markdown
 import { processAudio, deleteNote } from './src/pipeline.js';
 import { buildIndex, search } from './src/search.js';
-import { readdir, readFile } from 'node:fs/promises';
+import { listNotes, getNote } from './src/db.js';
+import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 const [cmd, arg, ...rest] = process.argv.slice(2);
@@ -22,25 +23,30 @@ if (cmd === 'process') {
     const language = langIdx !== -1 ? rest[langIdx + 1] : 'en';
     console.log(`▸ Sauti: processing ${arg} (language=${language})`);
     const note = await processAudio(arg, { language });
-    console.log(`\n✅ Note saved: notes/${note.id}.md`);
+    console.log(`\n✅ Note saved: ${note.id}`);
     console.log(`Title: ${note.title}`);
     console.log(`Summary: ${note.summary}`);
     console.log('Actions:');
     for (const a of note.actions) console.log(`  - ${a}`);
     console.log(`\nTiming: asr-load ${(note.timing.loadAsrMs / 1000).toFixed(1)}s · transcribe ${(note.timing.transcribeMs / 1000).toFixed(1)}s · llm-load ${(note.timing.loadLlmMs / 1000).toFixed(1)}s · llm ${(note.timing.llmMs / 1000).toFixed(1)}s @ ${note.timing.tokensPerSec} tok/s`);
 } else if (cmd === 'list') {
-    const files = (await readdir('notes').catch(() => [])).filter((f) => f.endsWith('.json') && f !== 'vectors.json').sort();
-    if (files.length === 0) {
+    const notes = listNotes();
+    if (notes.length === 0) {
         console.log('(no notes yet)');
     } else {
-        for (const f of files) {
-            const n = JSON.parse(await readFile(join('notes', f), 'utf8'));
-            console.log(`${n.id}  [${n.language}]  ${n.title}\n    ${n.summary.slice(0, 100)}`);
+        for (const n of notes) {
+            console.log(`${n.id}  [${n.language}]  ${n.title}\n    ${String(n.summary).slice(0, 100)}`);
         }
     }
 } else if (cmd === 'show') {
     if (!arg) die('missing note id');
-    console.log(await readFile(join('notes', `${arg}.md`), 'utf8'));
+    try {
+        console.log(await readFile(join('notes', `${arg}.md`), 'utf8'));
+    } catch {
+        const note = getNote(arg);
+        if (!note) die(`no such note: ${arg}`);
+        console.log(`# ${note.title}\n\n${note.summary}\n\n## Actions\n${(note.actions.length ? note.actions : ['none']).map((a) => `- ${a}`).join('\n')}\n\n## Transcript\n${note.transcript}`);
+    }
 } else if (cmd === 'delete') {
     if (!arg) die('missing note id');
     const removed = await deleteNote(arg);
@@ -48,7 +54,7 @@ if (cmd === 'process') {
 } else if (cmd === 'reindex') {
     const all = [arg, ...rest].filter(Boolean);
     const { indexed, total } = await buildIndex({ force: all.includes('--force') });
-    console.log(`✅ Index: ${indexed} newly embedded, ${total} total in vectors.json`);
+    console.log(`✅ Index: ${indexed} newly embedded, ${total} total`);
 } else if (cmd === 'search') {
     const all = [arg, ...rest].filter(Boolean);
     const query = all.find((a) => !a.startsWith('--'));
@@ -58,10 +64,10 @@ if (cmd === 'process') {
     console.log(`▸ Searching: "${query}"`);
     const results = await search(query, { k });
     if (results.length === 0) {
-        console.log('(empty index — run: node cli.js reindex)');
+        console.log('(empty index. run: node cli.js reindex)');
     } else {
         for (const r of results) {
-            console.log(`${(r.score + 1).toFixed(4)}  ${r.id}  ${r.title ?? '(missing note file)'}`);
+            console.log(`${(r.score + 1).toFixed(4)}  ${r.id}  ${r.title ?? '(missing note)'}`);
             console.log(`    ${String(r.summary ?? '').slice(0, 110)}`);
         }
     }

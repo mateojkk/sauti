@@ -1,5 +1,5 @@
 /**
- * Sauti local server — serves the UI and the pipeline API on localhost only.
+ * Sauti local server. Serves the UI and the pipeline API on localhost only.
  * No external assets, no API keys, no outbound calls: it runs with the
  * network fully disconnected (judging requirement).
  */
@@ -7,8 +7,9 @@ import { createServer } from 'node:http';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join, extname } from 'node:path';
-import { processAudio, deleteNote } from './pipeline.js';
+import { processAudio, deleteNote, updateNote, rebuildFromTranscript } from './pipeline.js';
 import { buildIndex, search } from './search.js';
+import { listNotes, getNote } from './db.js';
 
 const PORT = 8787;
 const PUBLIC = 'public';
@@ -22,18 +23,19 @@ const MIME = {
     '.ico': 'image/x-icon',
 };
 
-/** One model job at a time — 8 GB laptop. */
-let busy = null;
-function withQueue(fn) {
-    const run = async () => {
-        try { return await fn(); } finally { busy = null; }
-    };
-    busy = run();
-    return busy;
+/** One model job at a time on an 8 GB laptop. Later jobs wait instead of 503. */
+let queue = Promise.resolve();
+function enqueue(fn) {
+    const job = queue.then(fn, fn);
+    queue = job.then(() => undefined, () => undefined);
+    return job;
 }
 
 const json = (res, code, obj) => {
-    res.writeHead(code, { 'Content-Type': 'application/json' });
+    res.writeHead(code, {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-store',
+    });
     res.end(JSON.stringify(obj));
 };
 
@@ -41,14 +43,38 @@ const server = createServer(async (req, res) => {
     const url = new URL(req.url, `http://localhost:${PORT}`);
     try {
         if (url.pathname === '/api/notes' && req.method === 'GET') {
-            const { readdir } = await import('node:fs/promises');
-            const files = (await readdir('notes').catch(() => [])).filter((f) => f.endsWith('.json') && f !== 'vectors.json').sort().reverse();
-            const notes = [];
-            for (const f of files) {
-                const n = JSON.parse(await readFile(join('notes', f), 'utf8'));
-                notes.push({ id: n.id, title: n.title, summary: n.summary, actions: n.actions, createdAt: n.createdAt, language: n.language, durationSec: n.durationSec ?? null });
-            }
+            const notes = listNotes().map((n) => ({
+                id: n.id,
+                title: n.title,
+                body: n.body,
+                summary: n.summary,
+                actions: n.actions,
+                createdAt: n.createdAt,
+                language: n.language,
+                durationSec: n.durationSec ?? null,
+            }));
             return json(res, 200, { notes });
+        }
+
+        if (/^\/api\/note\/[^/]+\/rebuild$/.test(url.pathname) && req.method === 'POST') {
+            const id = url.pathname.split('/')[3];
+            const note = await enqueue(() => rebuildFromTranscript(id));
+            if (!note) return json(res, 404, { error: 'note not found' });
+            enqueue(() => buildIndex()).catch((e) => console.error('reindex failed:', e.message));
+            return json(res, 200, { note });
+        }
+
+        if (url.pathname.startsWith('/api/note/') && req.method === 'PUT') {
+            const id = url.pathname.split('/').pop();
+            const raw = await new Promise((resolve, reject) => {
+                let body = '';
+                req.on('data', (c) => { body += c; });
+                req.on('end', () => { try { resolve(JSON.parse(body || '{}')); } catch (e) { reject(e); } });
+            });
+            const note = await updateNote(id, raw);
+            if (!note) return json(res, 404, { error: 'note not found' });
+            enqueue(() => buildIndex()).catch((e) => console.error('reindex failed:', e.message));
+            return json(res, 200, { note });
         }
 
         if (url.pathname.startsWith('/api/note/') && req.method === 'DELETE') {
@@ -59,7 +85,8 @@ const server = createServer(async (req, res) => {
 
         if (url.pathname.startsWith('/api/note/') && req.method === 'GET') {
             const id = url.pathname.split('/').pop();
-            const note = JSON.parse(await readFile(join('notes', `${id}.json`), 'utf8'));
+            const note = getNote(id);
+            if (!note) return json(res, 404, { error: 'note not found' });
             return json(res, 200, { note });
         }
 
@@ -67,7 +94,6 @@ const server = createServer(async (req, res) => {
             const lang = url.searchParams.get('lang') ?? 'en';
             const name = url.searchParams.get('name') ?? 'upload.wav';
             const dur = Number(url.searchParams.get('dur')) || null; // recording length in seconds, when known
-            if (busy) return json(res, 503, { error: 'Sauti is processing another note — one moment' });
             const chunks = [];
             for await (const chunk of req) chunks.push(chunk);
             if (chunks.length === 0) return json(res, 400, { error: 'empty body' });
@@ -76,8 +102,8 @@ const server = createServer(async (req, res) => {
             const file = join(RECORDINGS, `${Date.now()}-${name.replace(/[^\w.-]/g, '_')}`);
             await writeFile(file, audio);
             const durationSec = dur ?? (file.endsWith('.wav') ? (audio.length - 44) / 32000 : null);
-            const note = await withQueue(() => processAudio(file, { language: lang, durationSec }));
-            await buildIndex().catch((e) => console.error('reindex failed:', e.message));
+            const note = await enqueue(() => processAudio(file, { language: lang, durationSec }));
+            enqueue(() => buildIndex()).catch((e) => console.error('reindex failed:', e.message));
             return json(res, 200, { note });
         }
 
@@ -85,7 +111,8 @@ const server = createServer(async (req, res) => {
         if (url.pathname.startsWith('/api/audio/') && req.method === 'GET') {
             const id = url.pathname.split('/').pop();
             if (!/^[0-9T-]+Z$/.test(id)) return json(res, 400, { error: 'bad id' });
-            const note = JSON.parse(await readFile(join('notes', `${id}.json`), 'utf8'));
+            const note = getNote(id);
+            if (!note) return json(res, 404, { error: 'note not found' });
             const file = note.audioFile ?? '';
             if (!file.startsWith(RECORDINGS) && !file.startsWith('test-audio/')) return json(res, 403, { error: 'not a Sauti recording' });
             if (!existsSync(file)) return json(res, 404, { error: 'audio file missing' });
@@ -102,8 +129,7 @@ const server = createServer(async (req, res) => {
                 req.on('data', (c) => { body += c; });
                 req.on('end', () => { try { resolve(JSON.parse(body)); } catch (e) { reject(e); } });
             });
-            if (busy) return json(res, 503, { error: 'Sauti is busy' });
-            const results = await withQueue(() => search(String(query ?? ''), { k: Number(k) || 5 }));
+            const results = await enqueue(() => search(String(query ?? ''), { k: Number(k) || 5 }));
             return json(res, 200, { results });
         }
 
@@ -122,6 +148,9 @@ const server = createServer(async (req, res) => {
     }
 });
 
+server.requestTimeout = 0;
+server.headersTimeout = 0;
+server.timeout = 0;
 server.listen(PORT, '127.0.0.1', () => {
     console.log(`▸ Sauti running at http://localhost:${PORT} (offline-capable)`);
 });

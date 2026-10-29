@@ -1,22 +1,5 @@
-/* Sauti client logic: record → WAV → /api/process; list; view; semantic search. */
 const $ = (id) => document.getElementById(id);
 
-// ---------- network badge ----------
-const net = $('net');
-function paintNet() {
-    if (navigator.onLine) {
-        net.textContent = 'internet ON — demo needs it OFF';
-        net.className = 'net on';
-    } else {
-        net.textContent = 'offline ✔ still working';
-        net.className = 'net off';
-    }
-}
-window.addEventListener('online', paintNet);
-window.addEventListener('offline', paintNet);
-paintNet();
-
-// ---------- notes list ----------
 function fmtDur(sec) {
     if (sec == null) return '';
     const s = Math.max(0, Math.round(sec));
@@ -26,11 +9,10 @@ function fmtDur(sec) {
 function relDate(ts) {
     const d = new Date(ts);
     const now = new Date();
-    const sameDay = (a, b) => a.toDateString() === b.toDateString();
     const yest = new Date(now); yest.setDate(now.getDate() - 1);
     const t = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-    if (sameDay(d, now)) return `Today · ${t}`;
-    if (sameDay(d, yest)) return `Yesterday · ${t}`;
+    if (d.toDateString() === now.toDateString()) return `Today · ${t}`;
+    if (d.toDateString() === yest.toDateString()) return `Yesterday · ${t}`;
     return `${d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} · ${t}`;
 }
 
@@ -43,86 +25,276 @@ function dayLabel(ts) {
     return d.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
 }
 
-async function loadNotes() {
-    const { notes } = await (await fetch('/api/notes')).json();
+let allNotes = [];
+let activeId = null;
+
+function noteMatches(n, filter) {
+    if (!filter) return true;
+    const hay = `${n.title} ${n.summary}`.toLowerCase();
+    return hay.includes(filter.toLowerCase());
+}
+
+function renderList() {
+    const filter = $('q').value.trim();
+    const notes = allNotes.filter((n) => noteMatches(n, filter));
+    $('noteCount').textContent = String(allNotes.length);
     const list = $('notesList');
-    list.innerHTML = notes.length
-        ? ''
-        : '<div class="empty">Nothing here yet — just hit record and talk.</div>';
+    list.replaceChildren();
+    if (!notes.length) {
+        const empty = document.createElement('div');
+        empty.className = 'empty';
+        empty.textContent = allNotes.length ? 'No titles match that filter.' : 'Nothing here yet. Press Record.';
+        list.appendChild(empty);
+        return;
+    }
     let lastDay = '';
     for (const n of notes) {
         const label = dayLabel(n.createdAt);
         if (label !== lastDay) {
             lastDay = label;
             const h = document.createElement('div');
-            h.className = 'day-group';
+            h.className = 'day';
             h.textContent = label;
             list.appendChild(h);
         }
-        const dur = n.durationSec != null ? fmtDur(n.durationSec) : '';
-        const el = document.createElement('div');
-        el.className = 'note';
-        el.innerHTML = `
-            <button class="del" title="delete note">🗑</button>
-            <div class="t"></div>
-            <div class="s"></div>
-            <div class="meta">${dur ? `<span class="badge">${dur}</span>` : ''}<span class="badge">${n.language}</span><span class="rel"></span><span>· ${n.actions.length} action${n.actions.length === 1 ? '' : 's'}</span></div>`;
-        el.querySelector('.t').textContent = n.title || '(untitled)';
-        el.querySelector('.s').textContent = n.summary || '';
-        el.querySelector('.rel').textContent = relDate(n.createdAt);
-        el.querySelector('.del').onclick = (e) => {
-            e.stopPropagation();
-            if (!confirm(`Delete "${n.title}"? This cannot be undone.`)) return;
-            fetch(`/api/note/${n.id}`, { method: 'DELETE' }).then(loadNotes);
-        };
-        el.onclick = () => openNote(n.id);
-        list.appendChild(el);
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `note${n.id === activeId ? ' active' : ''}`;
+        btn.innerHTML = '<div class="top"><div class="t"></div><div class="dur"></div></div><div class="s"></div><div class="meta"></div>';
+        btn.querySelector('.t').textContent = n.title || '(untitled)';
+        btn.querySelector('.dur').textContent = n.durationSec != null ? fmtDur(n.durationSec) : '';
+        btn.querySelector('.s').textContent = (n.body || n.summary || '').split('\n').find(Boolean) || '';
+        btn.querySelector('.meta').textContent = relDate(n.createdAt);
+        btn.onclick = () => openNote(n.id);
+        list.appendChild(btn);
     }
 }
 
+function renderChips() {
+    const box = $('chips');
+    box.replaceChildren();
+    const seen = new Set();
+    for (const n of allNotes) {
+        const label = (n.title || '').trim();
+        if (!label || seen.has(label.toLowerCase())) continue;
+        seen.add(label.toLowerCase());
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'chip';
+        btn.textContent = label;
+        btn.onclick = () => {
+            $('q').value = label;
+            $('searchForm').requestSubmit();
+        };
+        box.appendChild(btn);
+        if (seen.size >= 5) break;
+    }
+    box.hidden = seen.size === 0;
+}
+
+async function loadNotes() {
+    const { notes } = await (await fetch('/api/notes', { cache: 'no-store' })).json();
+    allNotes = notes;
+    renderChips();
+    renderList();
+}
+
+let openDraft = null;
+
+function showIdle() {
+    activeId = null;
+    openDraft = null;
+    $('detail').classList.remove('editing');
+    $('detail').hidden = true;
+    $('idle').hidden = false;
+    $('dAudio').pause();
+    $('playBtn').textContent = '▶';
+    renderList();
+}
+
+function setEditing(on) {
+    $('detail').classList.toggle('editing', on);
+    $('dEdit').hidden = on;
+    $('dDelete').hidden = on;
+    $('dCancel').hidden = !on;
+    $('dSave').hidden = !on;
+    $('saveState').textContent = '';
+}
+
+function fillView(note) {
+    $('dTitle').textContent = note.title || '';
+    $('dBody').textContent = note.body || '';
+    const gist = note.summary && note.summary !== note.body ? note.summary : '';
+    $('dSummary').textContent = gist;
+    $('sumSection').hidden = !gist;
+    const box = $('dActions');
+    box.replaceChildren();
+    if (!(note.actions || []).length) {
+        $('actSection').hidden = true;
+    } else {
+        $('actSection').hidden = false;
+        for (const a of note.actions) {
+            const el = document.createElement('div');
+            el.className = 'action';
+            el.textContent = a;
+            box.appendChild(el);
+        }
+    }
+}
+
+function startEdit() {
+    if (!openDraft) return;
+    $('eTranscript').value = openDraft.transcript || '';
+    setEditing(true);
+    $('eTranscript').focus();
+}
+
+function cancelEdit() {
+    setEditing(false);
+    if (openDraft) fillView(openDraft);
+}
+
+async function saveEdits() {
+    if (!activeId) return;
+    const transcript = $('eTranscript').value;
+    $('saveState').textContent = 'Saving…';
+    const res = await fetch(`/api/note/${activeId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        cache: 'no-store',
+        body: JSON.stringify({ transcript }),
+    });
+    if (!res.ok) {
+        $('saveState').textContent = 'Could not save';
+        return;
+    }
+    const { note } = await res.json();
+    openDraft = note;
+    setEditing(false);
+    fillView(note);
+    $('dTranscript').textContent = note.transcript || '';
+    $('dWhen').textContent = `${relDate(note.createdAt)} · ${note.language}${fmtDur(note.durationSec) ? ` · ${fmtDur(note.durationSec)}` : ''}`;
+    $('saveState').textContent = 'Saved. Rewrite notes to refresh the structure.';
+    await loadNotes();
+}
+
 async function openNote(id) {
-    const { note } = await (await fetch(`/api/note/${id}`)).json();
-    const body = $('modalBody');
-    body.innerHTML = `
-        <h3></h3>
-        <div class="when"></div>
-        <audio id="noteAudio" class="note-audio" controls></audio>
-        <section><h4>Summary</h4><p></p></section>
-        <section><h4>Actions</h4><div class="actions"></div></section>
-        <section><h4>Transcript</h4><div class="transcript"></div></section>
-        <div class="models">asr: ${note.models.asr} · llm: ${note.models.llm} · transcribe ${(note.timing.transcribeMs / 1000).toFixed(1)}s · llm ${(note.timing.llmMs / 1000).toFixed(1)}s @ ${note.timing.tokensPerSec} tok/s</div>`;
-    body.querySelector('h3').textContent = note.title;
-    body.querySelector('.when').textContent = `${relDate(note.createdAt)} · ${note.language} · ${fmtDur(note.durationSec)}${fmtDur(note.durationSec) ? ' · ' : ''}${(note.audioFile.split('/').pop() || '').replace(/^\d+-/, '')}`;
-    const au = body.querySelector('#noteAudio');
+    const { note } = await (await fetch(`/api/note/${id}`, { cache: 'no-store' })).json();
+    if (!note) return;
+    activeId = id;
+    openDraft = note;
+    $('idle').hidden = true;
+    $('detail').hidden = false;
+    setEditing(false);
+    $('dWhen').textContent = `${relDate(note.createdAt)} · ${note.language}${fmtDur(note.durationSec) ? ` · ${fmtDur(note.durationSec)}` : ''}`;
+    const au = $('dAudio');
+    au.pause();
     au.src = `/api/audio/${note.id}`;
     au.load();
-    body.querySelector('p').textContent = note.summary;
-    body.querySelector('.actions').innerHTML = note.actions.length
-        ? note.actions.map((a) => `<div class="action"></div>`).join('')
-        : '<div class="empty">none</div>';
-    [...body.querySelectorAll('.action')].forEach((el, i) => { el.textContent = note.actions[i]; });
-    body.querySelector('.transcript').textContent = note.transcript;
-    $('modal').classList.remove('hidden');
+    $('playBtn').textContent = '▶';
+    $('playCur').textContent = '0:00';
+    $('playSeek').value = 0;
+    fillView(note);
+    $('dTranscript').textContent = note.transcript || '';
+    renderList();
 }
-$('closeModal').onclick = () => { $('noteAudio')?.pause(); $('modal').classList.add('hidden'); };
-$('modal').onclick = (e) => { if (e.target === $('modal')) { $('noteAudio')?.pause(); $('modal').classList.add('hidden'); } };
 
-// ---------- processing UI ----------
+const audio = $('dAudio');
+$('playBtn').onclick = () => {
+    if (audio.paused) audio.play();
+    else audio.pause();
+};
+audio.addEventListener('play', () => { $('playBtn').textContent = '❚❚'; });
+audio.addEventListener('pause', () => { $('playBtn').textContent = '▶'; });
+audio.addEventListener('loadedmetadata', () => {
+    $('playSeek').max = audio.duration || 0;
+    $('playDur').textContent = fmtDur(audio.duration);
+});
+audio.addEventListener('timeupdate', () => {
+    if (!$('playSeek').matches(':active')) $('playSeek').value = audio.currentTime;
+    $('playCur').textContent = fmtDur(audio.currentTime);
+});
+$('playSeek').addEventListener('input', () => {
+    audio.currentTime = Number($('playSeek').value);
+});
+
+$('dCopy').onclick = async () => {
+    if (!openDraft) return;
+    const n = openDraft;
+    const parts = [n.title, '', n.body];
+    if (n.summary) parts.push('', 'Summary', n.summary);
+    if ((n.actions || []).length) parts.push('', 'Tasks', ...n.actions.map((a) => `- ${a}`));
+    try {
+        await navigator.clipboard.writeText(parts.join('\n').trim());
+        $('saveState').textContent = 'Copied';
+        setTimeout(() => { if ($('saveState').textContent === 'Copied') $('saveState').textContent = ''; }, 1600);
+    } catch {
+        alert('Could not copy.');
+    }
+};
+$('dRebuild').onclick = async () => {
+    if (!activeId) return;
+    $('dRebuild').disabled = true;
+    stage('Rewriting notes from the transcript…', 60);
+    try {
+        const res = await fetch(`/api/note/${activeId}/rebuild`, { method: 'POST', cache: 'no-store' });
+        if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? 'rebuild failed');
+        const { note } = await res.json();
+        openDraft = note;
+        fillView(note);
+        $('dTranscript').textContent = note.transcript || '';
+        $('dWhen').textContent = `${relDate(note.createdAt)} · ${note.language}${fmtDur(note.durationSec) ? ` · ${fmtDur(note.durationSec)}` : ''}`;
+        await loadNotes();
+    } catch (err) {
+        alert(`✖ ${err.message}`);
+    } finally {
+        stageDone();
+        $('dRebuild').disabled = false;
+    }
+};
+$('dEdit').onclick = startEdit;
+$('dCancel').onclick = cancelEdit;
+$('dSave').onclick = saveEdits;
+document.addEventListener('keydown', (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's' && $('detail').classList.contains('editing')) {
+        e.preventDefault();
+        saveEdits();
+    }
+});
+
+$('back').onclick = showIdle;
+$('dDelete').onclick = async () => {
+    if (!activeId) return;
+    if (!confirm('Delete this note? This cannot be undone.')) return;
+    const id = activeId;
+    const res = await fetch(`/api/note/${id}`, { method: 'DELETE', cache: 'no-store' });
+    if (!res.ok) {
+        alert('✖ Could not delete that note.');
+        return;
+    }
+    allNotes = allNotes.filter((n) => n.id !== id);
+    for (const hit of [...$('results').querySelectorAll('.hit')]) {
+        if (hit.dataset.id === id) hit.remove();
+    }
+    if (!$('results').querySelector('.hit')) $('results').hidden = true;
+    showIdle();
+    await loadNotes();
+};
+
 function stage(name, pct) {
-    $('progress').classList.remove('hidden');
-    $('stage').textContent = name;
-    if (pct != null) $('barFill').style.width = `${pct}%`;
-    else $('barFill').style.width = '85%';
+    $('progress').hidden = false;
+    $('stageLabel').textContent = name;
+    $('barFill').style.width = `${pct ?? 85}%`;
 }
 function stageDone() {
-    $('progress').classList.add('hidden');
+    $('progress').hidden = true;
     $('barFill').style.width = '0%';
 }
 
 async function submitAudio(blob, name, durationSec = null) {
     $('rec').disabled = true;
     $('file').disabled = true;
-    stage('Uploading audio…', 15);
+    stage('Sending audio…', 15);
     try {
         stage('Transcribing on-device…', 45);
         const res = await fetch(`/api/process?lang=${$('lang').value}&name=${encodeURIComponent(name)}${durationSec ? `&dur=${Math.round(durationSec)}` : ''}`, {
@@ -133,11 +305,11 @@ async function submitAudio(blob, name, durationSec = null) {
             const err = await res.json().catch(() => ({ error: res.statusText }));
             throw new Error(err.error ?? 'processing failed');
         }
-        stage('Summarizing locally…', 90);
+        stage('Writing the note…', 90);
         const { note } = await res.json();
         stageDone();
         await loadNotes();
-        openNote(note.id);
+        await openNote(note.id);
     } catch (e) {
         stageDone();
         alert(`✖ ${e.message}`);
@@ -147,38 +319,49 @@ async function submitAudio(blob, name, durationSec = null) {
     }
 }
 
-// ---------- live waveform ----------
-let analyser = null;
 let waveRaf = 0;
+let mediaStream = null;
+let audioCtx = null;
+let recSource = null;
+let captureNode = null;
+let chunks = [];
+let lastFrame = new Float32Array(128);
+let t0 = 0;
+let timerId = 0;
+let recRate = 16000;
+let capturing = false;
+let recPaused = false;
+let elapsedMs = 0;
+let runningSince = 0;
+
+function recSeconds() {
+    const live = recPaused ? 0 : Date.now() - runningSince;
+    return Math.floor((elapsedMs + live) / 1000);
+}
+
+function paintRecTime() {
+    const s = recSeconds();
+    $('recLabel').textContent = `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+}
 
 function startWaveform() {
     const canvas = $('wave');
     const ctx2d = canvas.getContext('2d');
-    analyser = audioCtx.createAnalyser();
-    analyser.fftSize = 256;
-    processor.connect(analyser);
-    const data = new Uint8Array(analyser.frequencyBinCount);
     canvas.classList.add('live');
     const draw = () => {
         waveRaf = requestAnimationFrame(draw);
-        analyser.getByteFrequencyData(data);
+        const data = lastFrame;
         const W = canvas.width, H = canvas.height;
         ctx2d.clearRect(0, 0, W, H);
-        const bars = 40, step = Math.floor(data.length / bars);
+        const bars = 36;
+        const step = Math.max(1, Math.floor(data.length / bars));
         const bw = W / bars;
         for (let i = 0; i < bars; i++) {
             let v = 0;
-            for (let j = 0; j < step; j++) v = Math.max(v, data[i * step + j]);
-            const h = Math.max(3, (v / 255) * (H - 6));
-            const x = i * bw + 2;
-            const g = ctx2d.createLinearGradient(0, H / 2 - h / 2, 0, H / 2 + h / 2);
-            g.addColorStop(0, '#a78bfa');
-            g.addColorStop(1, '#22d3ee');
-            ctx2d.fillStyle = g;
-            ctx2d.beginPath();
-            if (ctx2d.roundRect) ctx2d.roundRect(x, (H - h) / 2, bw - 4, h, 3);
-            else ctx2d.rect(x, (H - h) / 2, bw - 4, h);
-            ctx2d.fill();
+            for (let j = 0; j < step; j++) v = Math.max(v, Math.abs(data[i * step + j] ?? 0));
+            const h = Math.max(3, v * (H - 8));
+            ctx2d.fillStyle = '#ff3b33';
+            ctx2d.fillRect(i * bw + 2, (H - h) / 2, bw - 3, h);
         }
     };
     draw();
@@ -186,21 +369,11 @@ function startWaveform() {
 
 function stopWaveform() {
     cancelAnimationFrame(waveRaf);
-    analyser = null;
     const canvas = $('wave');
     canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
     canvas.classList.remove('live');
 }
 
-// ---------- recording (browser captures PCM, encodes 16 kHz WAV) ----------
-let mediaStream = null;
-let audioCtx = null;
-let processor = null;
-let chunks = [];
-let t0 = 0;
-let timerId = 0;
-
-/** Resample to 16 kHz by linear interpolation (correct for any input rate). */
 function resampleTo16k(f32, fromRate) {
     if (fromRate === 16000) return f32;
     const outLen = Math.round((f32.length * 16000) / fromRate);
@@ -241,53 +414,113 @@ function encodeWav(f32, sampleRate) {
     return buf;
 }
 
-$('rec').onclick = async () => {
-    if ($('rec').classList.contains('recording')) {
-        // stop
-        stopWaveform();
-        processor.disconnect();
-        audioCtx.close();
-        mediaStream.getTracks().forEach((t) => t.stop());
-        clearInterval(timerId);
-        $('rec').classList.remove('recording');
-        $('rec').querySelector('span').textContent = 'Just talk';
-        $('recState').textContent = '';
-        const total = chunks.reduce((n, c) => n + c.length, 0);
-        const merged = new Float32Array(total);
-        let off = 0;
-        for (const c of chunks) { merged.set(c, off); off += c.length; }
-        chunks = [];
-        const wav16 = resampleTo16k(merged, audioCtx.sampleRate);
-        if (wav16.length < 8000) return alert('Recording too short.');
-        const blob = new Blob([encodeWav(wav16, 16000)], { type: 'audio/wav' });
-        await submitAudio(blob, 'recording.wav', (Date.now() - t0) / 1000);
-        return;
-    }
-    mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    // Prefer a 16 kHz context (native resample by the browser, no aliasing).
-    try {
-        audioCtx = new AudioContext({ sampleRate: 16000 });
-    } catch {
-        audioCtx = new AudioContext();
-    }
-    const src = audioCtx.createMediaStreamSource(mediaStream);
-    processor = audioCtx.createScriptProcessor(4096, 1, 1);
+function setRecordingUi(on) {
+    $('rec').classList.toggle('recording', on);
+    $('rec').classList.remove('paused');
+    $('recLabel').textContent = on ? '00:00' : 'Record';
+    $('rec').title = on ? 'Done (save notes)' : 'Record (R)';
+    $('recPause').hidden = !on;
+    $('recPause').textContent = 'Pause';
+    $('recCancel').hidden = !on;
+    $('file').disabled = on;
+    document.querySelector('.upload').hidden = on;
+    $('langBtn').disabled = on;
+    if (on) closeMenus();
+    recPaused = false;
+    capturing = on;
+}
+
+async function endCapture() {
+    stopWaveform();
+    recSource?.disconnect();
+    captureNode?.disconnect();
+    const rate = recRate;
+    const captured = chunks;
     chunks = [];
-    processor.onaudioprocess = (e) => chunks.push(new Float32Array(e.inputBuffer.getChannelData(0)));
-    src.connect(processor);
-    processor.connect(audioCtx.destination); // needed in some browsers to keep pumping
-    t0 = Date.now();
-    timerId = setInterval(() => {
-        const s = Math.floor((Date.now() - t0) / 1000);
-        $('recState').textContent = `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
-    }, 250);
-    $('rec').classList.add('recording');
-    $('rec').textContent = '';
-    $('rec').querySelector('span').textContent = 'Stop';
-    startWaveform();
+    try { await audioCtx.close(); } catch {}
+    mediaStream?.getTracks().forEach((t) => t.stop());
+    mediaStream = null;
+    if (!recPaused) elapsedMs += Date.now() - runningSince;
+    clearInterval(timerId);
+    const durationSec = elapsedMs / 1000;
+    setRecordingUi(false);
+    return { rate, captured, durationSec };
+}
+
+$('recCancel').onclick = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!$('rec').classList.contains('recording')) return;
+    await endCapture();
 };
 
-// ---------- file upload ----------
+$('recPause').onclick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!$('rec').classList.contains('recording')) return;
+    if (recPaused) {
+        recPaused = false;
+        capturing = true;
+        runningSince = Date.now();
+        $('recPause').textContent = 'Pause';
+        $('rec').classList.remove('paused');
+        startWaveform();
+        return;
+    }
+    elapsedMs += Date.now() - runningSince;
+    recPaused = true;
+    capturing = false;
+    $('recPause').textContent = 'Resume';
+    $('rec').classList.add('paused');
+    stopWaveform();
+};
+
+$('rec').onclick = async () => {
+    if ($('rec').classList.contains('recording')) {
+        const { rate, captured, durationSec } = await endCapture();
+        const total = captured.reduce((n, c) => n + c.length, 0);
+        const merged = new Float32Array(total);
+        let off = 0;
+        for (const c of captured) { merged.set(c, off); off += c.length; }
+        const wav16 = resampleTo16k(merged, rate);
+        if (wav16.length < 8000) return alert('Recording too short.');
+        const blob = new Blob([encodeWav(wav16, 16000)], { type: 'audio/wav' });
+        await submitAudio(blob, 'recording.wav', durationSec);
+        return;
+    }
+    showIdle();
+    try {
+        mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        try {
+            audioCtx = new AudioContext({ sampleRate: 16000 });
+        } catch {
+            audioCtx = new AudioContext();
+        }
+        recRate = audioCtx.sampleRate;
+        await audioCtx.audioWorklet.addModule('/worklet-recorder.js');
+        recSource = audioCtx.createMediaStreamSource(mediaStream);
+        captureNode = new AudioWorkletNode(audioCtx, 'capture');
+        chunks = [];
+        captureNode.port.onmessage = (e) => {
+            if (!capturing) return;
+            const buf = e.data;
+            chunks.push(buf);
+            lastFrame = buf;
+        };
+        recSource.connect(captureNode);
+        elapsedMs = 0;
+        runningSince = Date.now();
+        t0 = Date.now();
+        timerId = setInterval(paintRecTime, 250);
+        setRecordingUi(true);
+        startWaveform();
+    } catch (err) {
+        mediaStream?.getTracks().forEach((t) => t.stop());
+        setRecordingUi(false);
+        alert(`✖ ${err.message}`);
+    }
+};
+
 $('file').onchange = async () => {
     const f = $('file').files[0];
     if (!f) return;
@@ -295,14 +528,18 @@ $('file').onchange = async () => {
     $('file').value = '';
 };
 
-// ---------- semantic search ----------
+$('q').addEventListener('input', () => {
+    if (!$('q').value.trim()) $('results').hidden = true;
+    renderList();
+});
+
 $('searchForm').onsubmit = async (e) => {
     e.preventDefault();
     const query = $('q').value.trim();
     if (!query) return;
-    $('results').innerHTML = '<div class="empty">searching on-device…</div>';
-    const btn = $('searchForm').querySelector('button');
-    if (btn) btn.disabled = true;
+    const box = $('results');
+    box.hidden = false;
+    box.innerHTML = '<div class="empty">searching on-device…</div>';
     try {
         const res = await fetch('/api/search', {
             method: 'POST',
@@ -311,54 +548,136 @@ $('searchForm').onsubmit = async (e) => {
         });
         if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? 'search failed');
         const { results } = await res.json();
-        if (results.length === 0) {
-            $('results').innerHTML = '<div class="empty">no index yet — process a note first</div>';
+        box.replaceChildren();
+        if (!results.length) {
+            box.innerHTML = '<div class="empty">no index yet. Process a note first.</div>';
             return;
         }
-        $('results').innerHTML = '';
         for (const r of results) {
             const el = document.createElement('div');
-            el.className = 'result';
-            el.innerHTML = `
-                <div class="score">match ${(r.score + 1).toFixed(3)}</div>
-                <div class="t"></div>
-                <div class="s"></div>`;
+            el.className = 'hit';
+            if (r.id) el.dataset.id = r.id;
+            el.innerHTML = '<div class="score"></div><div class="t"></div><div class="s"></div>';
+            el.querySelector('.score').textContent = `match ${(r.score + 1).toFixed(3)}`;
             el.querySelector('.t').textContent = r.title ?? r.id;
             el.querySelector('.s').textContent = (r.summary ?? '').slice(0, 120);
             if (r.id) el.onclick = () => openNote(r.id);
-            $('results').appendChild(el);
+            box.appendChild(el);
         }
     } catch (err) {
-        $('results').innerHTML = `<div class="empty">✖ ${err.message}</div>`;
-    } finally {
-        if (btn) btn.disabled = false;
+        box.innerHTML = `<div class="empty">✖ ${err.message}</div>`;
     }
 };
 
-// Try-chips: one click runs a real query (great for the demo video)
-for (const chip of document.querySelectorAll('.chip')) {
-    chip.onclick = () => {
-        $('q').value = chip.textContent.trim();
-        $('searchForm').requestSubmit();
-    };
+function closeMenus(except) {
+    for (const menu of document.querySelectorAll('.menu.open')) {
+        if (menu === except) continue;
+        menu.classList.remove('open');
+        const list = menu.querySelector('.menu-list');
+        const btn = menu.querySelector('.menu-btn');
+        if (list) list.hidden = true;
+        if (btn) btn.setAttribute('aria-expanded', 'false');
+    }
 }
 
-// deep link: #note=<id> opens the note (used for fast visual checks)
+function bindMenu(menu, { labels = {}, hiddenId } = {}) {
+    const btn = menu.querySelector('.menu-btn');
+    const list = menu.querySelector('.menu-list');
+    const hidden = hiddenId ? $(hiddenId) : menu.querySelector('input[type="hidden"]');
+    const label = btn.querySelector('span:not(.chev)');
+    const options = () => [...list.querySelectorAll('[role="option"]')];
+
+    function setValue(value, { close = true } = {}) {
+        if (hidden) hidden.value = value;
+        if (label) label.textContent = labels[value] ?? value.toUpperCase();
+        for (const opt of options()) {
+            opt.setAttribute('aria-selected', opt.dataset.value === value ? 'true' : 'false');
+        }
+        if (close) closeMenus();
+    }
+
+    function open() {
+        const wasOpen = menu.classList.contains('open');
+        closeMenus();
+        if (wasOpen) return;
+        menu.classList.add('open');
+        list.hidden = false;
+        btn.setAttribute('aria-expanded', 'true');
+        options().find((o) => o.getAttribute('aria-selected') === 'true')?.focus();
+    }
+
+    btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        open();
+    });
+    for (const opt of options()) {
+        opt.addEventListener('click', (e) => {
+            e.stopPropagation();
+            setValue(opt.dataset.value);
+            btn.focus();
+        });
+    }
+    list.addEventListener('keydown', (e) => {
+        const items = options();
+        const i = items.indexOf(document.activeElement);
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+            e.preventDefault();
+            const next = e.key === 'ArrowDown'
+                ? items[(i + 1) % items.length]
+                : items[(i - 1 + items.length) % items.length];
+            next.focus();
+        } else if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            if (i >= 0) setValue(items[i].dataset.value);
+        } else if (e.key === 'Home') {
+            e.preventDefault();
+            items[0]?.focus();
+        } else if (e.key === 'End') {
+            e.preventDefault();
+            items[items.length - 1]?.focus();
+        }
+    });
+    setValue(hidden?.value || options()[0]?.dataset.value, { close: false });
+}
+
+bindMenu($('langMenu'), { labels: { en: 'EN', sw: 'SW' }, hiddenId: 'lang' });
+document.addEventListener('click', () => closeMenus());
+
 const hashNote = location.hash.match(/^#note=([\w-]+)$/);
 if (hashNote) openNote(hashNote[1]);
 
-// ---------- keyboard shortcuts (Voicenotes-style: R records, / searches) ----------
 loadNotes();
 document.addEventListener('keydown', (e) => {
-    const typing = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName);
+    const typing = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)
+        || document.activeElement?.isContentEditable;
+    if (e.key === 'Escape') {
+        e.preventDefault();
+        if (document.querySelector('.menu.open')) {
+            closeMenus();
+            return;
+        }
+        if ($('rec').classList.contains('recording')) {
+            $('recCancel').click();
+            return;
+        }
+        if ($('detail').classList.contains('editing')) {
+            cancelEdit();
+            return;
+        }
+        showIdle();
+        return;
+    }
     if (typing || e.metaKey || e.ctrlKey || e.altKey) return;
+    if ($('rec').classList.contains('recording') && (e.key === 'p' || e.key === 'P')) {
+        e.preventDefault();
+        $('recPause').click();
+        return;
+    }
     if (e.key === '/') {
         e.preventDefault();
         $('q').focus();
     } else if (e.key === 'r' || e.key === 'R') {
         e.preventDefault();
         $('rec').click();
-    } else if (e.key === 'Escape') {
-        $('modal').classList.add('hidden');
     }
 });

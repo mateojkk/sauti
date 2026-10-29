@@ -3,86 +3,105 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sauti — offline voice notes</title>
+<title>Sauti, offline voice notes</title>
 <link rel="stylesheet" href="/style.css">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23a78bfa'/%3E%3Cstop offset='1' stop-color='%2322d3ee'/%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx='16' cy='16' r='15' fill='url(%23g)'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='15' fill='%23ff3b33'/%3E%3C/svg%3E">
 </head>
 <body>
-<header>
-    <div class="brand">
-        <svg class="logo" viewBox="0 0 24 24" fill="none" stroke="url(#ol)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><defs><linearGradient id="ol" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#a78bfa"/><stop offset="1" stop-color="#22d3ee"/></linearGradient></defs><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v1a7 7 0 0 0 14 0v-1"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/></svg>
-        Sauti <span class="sub">voice notes · 100% on-device</span>
-    </div>
-    <div id="net" class="net">checking…</div>
-</header>
-
-<main>
-    <section id="capture" class="card">
-        <h2><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v1a7 7 0 0 0 14 0v-1"/></svg> New note</h2>
-
-        <div class="rec-zone">
-            <button id="rec" class="rec" title="Record (R)">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v1a7 7 0 0 0 14 0v-1"/><line x1="12" y1="18" x2="12" y2="22"/></svg>
-                <span>Just talk</span>
-            </button>
-            <canvas id="wave" class="wave" width="300" height="44"></canvas>
-            <div class="tagline">press <kbd>R</kbd> to start · <kbd>/</kbd> to search</div>
+<div class="app">
+    <aside class="rail">
+        <div class="brand">
+            <strong>Sauti</strong>
+            <span class="tag">offline voice notes</span>
         </div>
-        <div id="recState" class="rec-state"></div>
-        <div class="upload">
-            <label for="file">
-                <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                …or open an audio file
-            </label>
-            <input id="file" type="file" accept="audio/*,.wav,.mp3,.m4a,.ogg,.webm">
-        </div>
-        <label class="lang">Language
-            <select id="lang">
-                <option value="en">English</option>
-                <option value="sw">Kiswahili</option>
-            </select>
-        </label>
-        <div id="progress" class="progress hidden">
-            <div class="bar"><div id="barFill"></div></div>
-            <div id="stage">…</div>
-        </div>
-    </section>
 
-    <section id="notesPane" class="card">
-        <h2><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> Notes</h2>
-        <div id="notesList" class="notes-list"></div>
-    </section>
-
-    <section id="searchPane" class="card">
-        <h2><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> Search <span class="hint">semantic · on-device</span></h2>
-        <form id="searchForm">
-            <div class="searchbar">
-                <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                <input id="q" type="text" placeholder="Ask anything…" autocomplete="off">
-                <button type="submit" class="btn-search">Search</button>
-            </div>
-            <div class="chips">
-                <button type="button" class="chip">Coffee</button>
-                <button type="button" class="chip">Wesley</button>
-                <button type="button" class="chip">Who loves coffee?</button>
-            </div>
+        <form id="searchForm" class="seek">
+            <input id="q" type="search" placeholder="Search your notes" autocomplete="off">
+            <kbd class="hint">/</kbd>
+            <button type="submit" class="ask">Ask</button>
         </form>
-        <div id="results"><div class="empty">Ask about your notes — Sauti ranks by meaning, not keywords. Everything stays on this machine.</div></div>
-    </section>
-</main>
+        <div class="chips" id="chips" hidden></div>
+        <div id="results" class="hits" hidden></div>
 
-<footer>
-    <span class="pill">whisper large-v3-turbo · 1.6 GB</span>
-    <span class="pill">qwen3-600m · 0.4 GB</span>
-    <span class="pill">embeddinggemma · 0.3 GB</span>
-    <span class="pill accent">no cloud · no API keys · MIT-spirited</span>
-</footer>
+        <div class="rail-head">
+            <span>Notes</span>
+            <span id="noteCount">0</span>
+        </div>
+        <div id="notesList" class="stack"></div>
+    </aside>
 
-<div id="modal" class="modal hidden">
-    <div class="modal-card">
-        <button id="closeModal" class="x">✕</button>
-        <div id="modalBody"></div>
+    <main class="stage" id="stage">
+        <section id="idle" class="idle">
+            <p class="kicker">Cloud to Pocket</p>
+            <h1>Talk. Get notes.</h1>
+            <p class="lede">Yap instead of type. Sauti transcribes and structures the note on this machine. No cloud, no typing required.</p>
+            <p class="keys"><kbd>R</kbd> record &nbsp;·&nbsp; pause anytime &nbsp;·&nbsp; <kbd>/</kbd> search</p>
+        </section>
+
+        <article id="detail" class="detail" hidden>
+            <div class="detail-bar">
+                <button id="back" class="text-btn" type="button">Back</button>
+                <div class="bar-right">
+                    <span id="saveState" class="save-state"></span>
+                    <button id="dCopy" class="text-btn view-only" type="button">Copy</button>
+                    <button id="dRebuild" class="text-btn view-only" type="button">Rewrite notes</button>
+                    <button id="dEdit" class="text-btn view-only" type="button">Fix transcript</button>
+                    <button id="dCancel" class="text-btn edit-only" type="button" hidden>Cancel</button>
+                    <button id="dSave" class="text-btn edit-only" type="button" hidden>Save</button>
+                    <button id="dDelete" class="text-btn danger view-only" type="button">Delete</button>
+                </div>
+            </div>
+            <h2 id="dTitle"></h2>
+            <p id="dWhen" class="when"></p>
+            <div class="playpill">
+                <button id="playBtn" type="button" aria-label="Play">▶</button>
+                <span id="playCur">0:00</span>
+                <input id="playSeek" type="range" min="0" max="0" value="0" step="0.1">
+                <span id="playDur">0:00</span>
+            </div>
+            <audio id="dAudio"></audio>
+            <div id="dBody" class="body"></div>
+            <section id="sumSection">
+                <h3>Summary</h3>
+                <p id="dSummary" class="summary"></p>
+            </section>
+            <section id="actSection">
+                <h3>Tasks</h3>
+                <div id="dActions"></div>
+            </section>
+            <h3>Transcript</h3>
+            <div id="dTranscript" class="transcript view-only"></div>
+            <textarea id="eTranscript" class="transcript edit-only" rows="8" placeholder="Fix the transcript…"></textarea>
+        </article>
+    </main>
+</div>
+
+<div class="recbar" id="recbar">
+    <canvas id="wave" class="wave" width="160" height="36"></canvas>
+    <button id="rec" class="rec" type="button" title="Record (R)">
+        <span class="dot"></span>
+        <span id="recLabel">Record</span>
+    </button>
+    <button id="recPause" class="cancel" type="button" hidden>Pause</button>
+    <button id="recCancel" class="cancel" type="button" hidden title="Cancel (Esc)">Cancel</button>
+    <label class="upload" for="file">Upload</label>
+    <input id="file" type="file" accept="audio/*,.wav,.mp3,.m4a,.ogg,.webm" hidden>
+    <div class="menu" id="langMenu">
+        <button type="button" class="menu-btn" id="langBtn" aria-haspopup="listbox" aria-expanded="false" aria-controls="langList" title="Language">
+            <span id="langLabel">EN</span>
+            <span class="chev" aria-hidden="true"></span>
+        </button>
+        <ul class="menu-list" id="langList" role="listbox" hidden>
+            <li role="none"><button type="button" role="option" data-value="en" aria-selected="true">English</button></li>
+            <li role="none"><button type="button" role="option" data-value="sw" aria-selected="false">Kiswahili</button></li>
+        </ul>
+        <input type="hidden" id="lang" value="en">
     </div>
+</div>
+
+<div id="progress" class="progress" hidden>
+    <div class="bar"><div id="barFill"></div></div>
+    <div id="stageLabel">…</div>
 </div>
 
 <script src="/app.js"></script>

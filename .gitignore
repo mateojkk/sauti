@@ -2,6 +2,10 @@ node_modules/
 *.log
 bench-*.json
 notes/
+sauti.db
+sauti.db-wal
+sauti.db-shm
 !test-audio/*.wav
+test-audio/recordings/
 test-audio/*.transcript.txt
 .DS_Store

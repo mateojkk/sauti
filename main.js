@@ -1,4 +1,4 @@
-// Sauti desktop shell — boots the local QVAC server, then opens it in a native window.
+// Sauti desktop shell. Boots the local QVAC server, then opens it in a native window.
 // Run with: npm run app  (requires `node` on PATH for the child server)
 import { spawn } from 'node:child_process';
 import { join } from 'node:path';
