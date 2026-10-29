@@ -1,7 +1,5 @@
 # Sauti
 
-*"Sauti" = voice in Swahili.*
-
 Talk instead of type. Sauti records on this machine, transcribes with Whisper, and turns the transcript into a structured note (title, body, summary, tasks). Search is local too.
 
 The cloud pattern (record → speech-to-text → LLM → dashboard) runs entirely on-device with [QVAC](https://qvac.tether.io). No API keys, no uploads, no internet after the first model download.
@@ -41,15 +39,14 @@ QVAC_CONFIG_PATH=./qvac.config.json node quickstart.js
 - Click the timer when you are done. Sauti transcribes, writes the note, and indexes it.
 - **Fix transcript** if Whisper missed a word. **Rewrite notes** rebuilds title, body, summary, and tasks from that text.
 - **Copy** puts the structured note on the clipboard.
-- **Ask** in the sidebar is semantic search over your notes (English or Kiswahili).
-- Language on the recbar is the Whisper hint (`EN` / `SW`).
+- **Ask** in the sidebar is semantic search over your notes.
 
 Notes live in `sauti.db` (WAL). Markdown exports land in `notes/`. Recordings are written under `test-audio/recordings/` and are not committed.
 
 ## CLI
 
 ```bash
-node cli.js process path/to/audio.wav [--lang en|sw]
+node cli.js process path/to/audio.wav
 node cli.js list
 node cli.js show <id>
 node cli.js delete <id>
