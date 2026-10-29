@@ -21,11 +21,12 @@
         <h2><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v1a7 7 0 0 0 14 0v-1"/></svg> New note</h2>
 
         <div class="rec-zone">
-            <button id="rec" class="rec" title="Record">
+            <button id="rec" class="rec" title="Record (R)">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v1a7 7 0 0 0 14 0v-1"/><line x1="12" y1="18" x2="12" y2="22"/></svg>
-                <span>Record</span>
+                <span>Just talk</span>
             </button>
-            <canvas id="wave" class="wave" width="220" height="44"></canvas>
+            <canvas id="wave" class="wave" width="300" height="44"></canvas>
+            <div class="tagline">press <kbd>R</kbd> to start · <kbd>/</kbd> to search</div>
         </div>
         <div id="recState" class="rec-state"></div>
         <div class="upload">

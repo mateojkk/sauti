@@ -215,7 +215,7 @@ export async function saveNote(note) {
 }
 
 /** Full run: transcribe + summarize + persist. Returns the saved note. */
-export async function processAudio(audioPath, { language = 'en' } = {}) {
+export async function processAudio(audioPath, { language = 'en', durationSec = null } = {}) {
     const asrConstant = await sdkConstant(MODELS.asr);
     const llmConstant = await sdkConstant(MODELS.llm);
     const note = {
@@ -223,6 +223,7 @@ export async function processAudio(audioPath, { language = 'en' } = {}) {
         createdAt: Date.now(),
         audioFile: audioPath,
         language,
+        durationSec,
         models: { ...MODELS },
         transcript: '',
         title: '',

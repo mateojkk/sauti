@@ -66,6 +66,7 @@ const server = createServer(async (req, res) => {
         if (url.pathname === '/api/process' && req.method === 'POST') {
             const lang = url.searchParams.get('lang') ?? 'en';
             const name = url.searchParams.get('name') ?? 'upload.wav';
+            const dur = Number(url.searchParams.get('dur')) || null; // recording length in seconds, when known
             if (busy) return json(res, 503, { error: 'Sauti is processing another note — one moment' });
             const chunks = [];
             for await (const chunk of req) chunks.push(chunk);
@@ -74,9 +75,25 @@ const server = createServer(async (req, res) => {
             await mkdir(RECORDINGS, { recursive: true });
             const file = join(RECORDINGS, `${Date.now()}-${name.replace(/[^\w.-]/g, '_')}`);
             await writeFile(file, audio);
-            const note = await withQueue(() => processAudio(file, { language: lang }));
+            const durationSec = dur ?? (file.endsWith('.wav') ? (audio.length - 44) / 32000 : null);
+            const note = await withQueue(() => processAudio(file, { language: lang, durationSec }));
             await buildIndex().catch((e) => console.error('reindex failed:', e.message));
             return json(res, 200, { note });
+        }
+
+        // Serve a note's original recording for playback in the modal.
+        if (url.pathname.startsWith('/api/audio/') && req.method === 'GET') {
+            const id = url.pathname.split('/').pop();
+            if (!/^[0-9T-]+Z$/.test(id)) return json(res, 400, { error: 'bad id' });
+            const note = JSON.parse(await readFile(join('notes', `${id}.json`), 'utf8'));
+            const file = note.audioFile ?? '';
+            if (!file.startsWith(RECORDINGS) && !file.startsWith('test-audio/')) return json(res, 403, { error: 'not a Sauti recording' });
+            if (!existsSync(file)) return json(res, 404, { error: 'audio file missing' });
+            const ext = extname(file).toLowerCase();
+            const type = { '.wav': 'audio/wav', '.mp3': 'audio/mpeg', '.m4a': 'audio/mp4', '.ogg': 'audio/ogg', '.webm': 'audio/webm' }[ext] ?? 'audio/wav';
+            const data = await readFile(file);
+            res.writeHead(200, { 'Content-Type': type, 'Content-Length': data.length });
+            return res.end(data);
         }
 
         if (url.pathname === '/api/search' && req.method === 'POST') {

@@ -17,22 +17,59 @@ window.addEventListener('offline', paintNet);
 paintNet();
 
 // ---------- notes list ----------
+function fmtDur(sec) {
+    if (sec == null) return '';
+    const s = Math.max(0, Math.round(sec));
+    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+
+function relDate(ts) {
+    const d = new Date(ts);
+    const now = new Date();
+    const sameDay = (a, b) => a.toDateString() === b.toDateString();
+    const yest = new Date(now); yest.setDate(now.getDate() - 1);
+    const t = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    if (sameDay(d, now)) return `Today · ${t}`;
+    if (sameDay(d, yest)) return `Yesterday · ${t}`;
+    return `${d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} · ${t}`;
+}
+
+function dayLabel(ts) {
+    const d = new Date(ts);
+    const now = new Date();
+    const yest = new Date(now); yest.setDate(now.getDate() - 1);
+    if (d.toDateString() === now.toDateString()) return 'Today';
+    if (d.toDateString() === yest.toDateString()) return 'Yesterday';
+    return d.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+}
+
 async function loadNotes() {
     const { notes } = await (await fetch('/api/notes')).json();
     const list = $('notesList');
     list.innerHTML = notes.length
         ? ''
-        : '<div class="empty">no notes yet — record something</div>';
+        : '<div class="empty">Nothing here yet — just hit record and talk.</div>';
+    let lastDay = '';
     for (const n of notes) {
+        const label = dayLabel(n.createdAt);
+        if (label !== lastDay) {
+            lastDay = label;
+            const h = document.createElement('div');
+            h.className = 'day-group';
+            h.textContent = label;
+            list.appendChild(h);
+        }
+        const dur = n.durationSec != null ? fmtDur(n.durationSec) : '';
         const el = document.createElement('div');
         el.className = 'note';
         el.innerHTML = `
             <button class="del" title="delete note">🗑</button>
             <div class="t"></div>
             <div class="s"></div>
-            <div class="meta">${new Date(n.createdAt).toLocaleString()} <span class="badge">${n.language}</span> ${n.actions.length} action(s)</div>`;
+            <div class="meta">${dur ? `<span class="badge">${dur}</span>` : ''}<span class="badge">${n.language}</span><span class="rel"></span><span>· ${n.actions.length} action(s)</span></div>`;
         el.querySelector('.t').textContent = n.title || '(untitled)';
         el.querySelector('.s').textContent = n.summary || '';
+        el.querySelector('.rel').textContent = relDate(n.createdAt);
         el.querySelector('.del').onclick = (e) => {
             e.stopPropagation();
             if (!confirm(`Delete "${n.title}"? This cannot be undone.`)) return;
@@ -48,12 +85,17 @@ async function openNote(id) {
     const body = $('modalBody');
     body.innerHTML = `
         <h3></h3>
-        <div class="when">${new Date(note.createdAt).toLocaleString()} · ${note.language} · ${note.audioFile}</div>
+        <div class="when"></div>
+        <audio id="noteAudio" class="note-audio" controls></audio>
         <section><h4>Summary</h4><p></p></section>
         <section><h4>Actions</h4><div class="actions"></div></section>
         <section><h4>Transcript</h4><div class="transcript"></div></section>
         <div class="models">asr: ${note.models.asr} · llm: ${note.models.llm} · transcribe ${(note.timing.transcribeMs / 1000).toFixed(1)}s · llm ${(note.timing.llmMs / 1000).toFixed(1)}s @ ${note.timing.tokensPerSec} tok/s</div>`;
     body.querySelector('h3').textContent = note.title;
+    body.querySelector('.when').textContent = `${relDate(note.createdAt)} · ${note.language} · ${fmtDur(note.durationSec)}${fmtDur(note.durationSec) ? ' · ' : ''}${note.audioFile.split('/').pop()}`;
+    const au = body.querySelector('#noteAudio');
+    au.src = `/api/audio/${note.id}`;
+    au.load();
     body.querySelector('p').textContent = note.summary;
     body.querySelector('.actions').innerHTML = note.actions.length
         ? note.actions.map((a) => `<div class="action"></div>`).join('')
@@ -77,13 +119,13 @@ function stageDone() {
     $('barFill').style.width = '0%';
 }
 
-async function submitAudio(blob, name) {
+async function submitAudio(blob, name, durationSec = null) {
     $('rec').disabled = true;
     $('file').disabled = true;
     stage('Uploading audio…', 15);
     try {
         stage('Transcribing on-device…', 45);
-        const res = await fetch(`/api/process?lang=${$('lang').value}&name=${encodeURIComponent(name)}`, {
+        const res = await fetch(`/api/process?lang=${$('lang').value}&name=${encodeURIComponent(name)}${durationSec ? `&dur=${Math.round(durationSec)}` : ''}`, {
             method: 'POST',
             body: blob,
         });
@@ -208,7 +250,7 @@ $('rec').onclick = async () => {
         mediaStream.getTracks().forEach((t) => t.stop());
         clearInterval(timerId);
         $('rec').classList.remove('recording');
-        $('rec').querySelector('span').textContent = 'Record';
+        $('rec').querySelector('span').textContent = 'Just talk';
         $('recState').textContent = '';
         const total = chunks.reduce((n, c) => n + c.length, 0);
         const merged = new Float32Array(total);
@@ -218,7 +260,7 @@ $('rec').onclick = async () => {
         const wav16 = resampleTo16k(merged, audioCtx.sampleRate);
         if (wav16.length < 8000) return alert('Recording too short.');
         const blob = new Blob([encodeWav(wav16, 16000)], { type: 'audio/wav' });
-        await submitAudio(blob, 'recording.wav');
+        await submitAudio(blob, 'recording.wav', (Date.now() - t0) / 1000);
         return;
     }
     mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -293,4 +335,18 @@ $('searchForm').onsubmit = async (e) => {
     }
 };
 
+// ---------- keyboard shortcuts (Voicenotes-style: R records, / searches) ----------
 loadNotes();
+document.addEventListener('keydown', (e) => {
+    const typing = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName);
+    if (typing || e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key === '/') {
+        e.preventDefault();
+        $('q').focus();
+    } else if (e.key === 'r' || e.key === 'R') {
+        e.preventDefault();
+        $('rec').click();
+    } else if (e.key === 'Escape') {
+        $('modal').classList.add('hidden');
+    }
+});
