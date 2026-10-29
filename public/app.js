@@ -105,6 +105,51 @@ async function submitAudio(blob, name) {
     }
 }
 
+// ---------- live waveform ----------
+let analyser = null;
+let waveRaf = 0;
+
+function startWaveform() {
+    const canvas = $('wave');
+    const ctx2d = canvas.getContext('2d');
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 256;
+    processor.connect(analyser);
+    const data = new Uint8Array(analyser.frequencyBinCount);
+    canvas.classList.add('live');
+    const draw = () => {
+        waveRaf = requestAnimationFrame(draw);
+        analyser.getByteFrequencyData(data);
+        const W = canvas.width, H = canvas.height;
+        ctx2d.clearRect(0, 0, W, H);
+        const bars = 40, step = Math.floor(data.length / bars);
+        const bw = W / bars;
+        for (let i = 0; i < bars; i++) {
+            let v = 0;
+            for (let j = 0; j < step; j++) v = Math.max(v, data[i * step + j]);
+            const h = Math.max(3, (v / 255) * (H - 6));
+            const x = i * bw + 2;
+            const g = ctx2d.createLinearGradient(0, H / 2 - h / 2, 0, H / 2 + h / 2);
+            g.addColorStop(0, '#a78bfa');
+            g.addColorStop(1, '#22d3ee');
+            ctx2d.fillStyle = g;
+            ctx2d.beginPath();
+            if (ctx2d.roundRect) ctx2d.roundRect(x, (H - h) / 2, bw - 4, h, 3);
+            else ctx2d.rect(x, (H - h) / 2, bw - 4, h);
+            ctx2d.fill();
+        }
+    };
+    draw();
+}
+
+function stopWaveform() {
+    cancelAnimationFrame(waveRaf);
+    analyser = null;
+    const canvas = $('wave');
+    canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+    canvas.classList.remove('live');
+}
+
 // ---------- recording (browser captures PCM, encodes 16 kHz WAV) ----------
 let mediaStream = null;
 let audioCtx = null;
@@ -157,12 +202,13 @@ function encodeWav(f32, sampleRate) {
 $('rec').onclick = async () => {
     if ($('rec').classList.contains('recording')) {
         // stop
+        stopWaveform();
         processor.disconnect();
         audioCtx.close();
         mediaStream.getTracks().forEach((t) => t.stop());
         clearInterval(timerId);
         $('rec').classList.remove('recording');
-        $('rec').textContent = '🎙 Record';
+        $('rec').querySelector('span').textContent = 'Record';
         $('recState').textContent = '';
         const total = chunks.reduce((n, c) => n + c.length, 0);
         const merged = new Float32Array(total);
@@ -194,7 +240,9 @@ $('rec').onclick = async () => {
         $('recState').textContent = `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
     }, 250);
     $('rec').classList.add('recording');
-    $('rec').textContent = '⏹ Stop';
+    $('rec').textContent = '';
+    $('rec').querySelector('span').textContent = 'Stop';
+    startWaveform();
 };
 
 // ---------- file upload ----------
@@ -211,6 +259,8 @@ $('searchForm').onsubmit = async (e) => {
     const query = $('q').value.trim();
     if (!query) return;
     $('results').innerHTML = '<div class="empty">searching on-device…</div>';
+    const btn = $('searchForm').querySelector('button');
+    if (btn) btn.disabled = true;
     try {
         const res = await fetch('/api/search', {
             method: 'POST',
@@ -238,6 +288,8 @@ $('searchForm').onsubmit = async (e) => {
         }
     } catch (err) {
         $('results').innerHTML = `<div class="empty">✖ ${err.message}</div>`;
+    } finally {
+        if (btn) btn.disabled = false;
     }
 };
 
