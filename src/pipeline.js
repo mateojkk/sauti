@@ -16,8 +16,8 @@ import { join } from 'node:path';
 import { removeVector } from './search.js';
 
 export const MODELS = {
-    asr: 'WHISPER_BASE_Q8_0',          // 82 MB, multilingual (sw supported, weak)
-    llm: process.env.SAUTI_LLM ?? 'QWEN3_600M_INST_Q4', // 382 MB; SAUTI_LLM to override
+    asr: process.env.SAUTI_ASR ?? 'WHISPER_LARGE_V3_TURBO', // 1.6 GB; base/small faster but weaker
+    llm: process.env.SAUTI_LLM ?? 'QWEN3_600M_INST_Q4',     // 382 MB; SAUTI_LLM to override
 };
 
 const NOTES_DIR = 'notes';
