@@ -62,14 +62,13 @@ export async function transcribeFile(modelId, audioPath) {
     return { transcript: text.trim(), inferMs: Date.now() - t0 };
 }
 
-/** Stage 2: transcript → typed note + short summary + tasks. */
+/** Stage 2: transcript → structured note + one-line summary. No tasks — Sauti writes down what you hear. */
 export async function summarize(modelId, transcript) {
     const SYSTEM = `Turn the transcript into a usable note. Write the content they said, cleaned up.
 
 TITLE a few words naming the topic
 NOTE full sentences or real bullets of what they said. If they listed points, write each point out. Never a skeleton like "1st: x. 2nd: y."
-SUMMARY one sentence
-TASKS todos they mentioned, or none
+SUMMARY one sentence of what this note is about
 
 Do not copy these labels into the title or the note. Do not repeat yourself. Facts only.`;
     const history = [
@@ -153,11 +152,14 @@ export function parseNotes(text) {
     }
     // 2) Plain-text headings: TITLE / SUMMARY / ACTIONS | ACTION ITEMS.
     const grab = (head) => {
-        const m = text.match(new RegExp(`${head}\\s*:?\\s*\\n?([\\s\\S]*?)(?=\\n\\s*(TITLE|NOTE|BODY|SUMMARY|TASKS|ACTIONS?\\s*ITEMS?)\\b|$)`, 'i'));
+        const m = text.match(new RegExp(`(?:^|\\n)\\s*\\**${head}\\s*\\**\\s*:?\\s*\\n?([\\s\\S]*?)(?=\\n[^\\w\\n]*(?:TITLE|NOTE|BODY|SUMMARY|TASKS|ACTIONS?\\s*ITEMS?)\\b|$)`, 'i'));
         return m ? m[1].trim() : '';
     };
     const title = grab('TITLE').replace(/\*\*/g, '').split('\n')[0].trim();
-    const body = (grab('NOTE') || grab('BODY')).replace(/\*\*/g, '').trim();
+    const body = (grab('NOTE') || grab('BODY')).replace(/\*\*/g, '')
+        .split('\n')
+        .filter((ln) => !/^\s*(TITLE|NOTE|BODY|SUMMARY|TASKS|ACTIONS?|ACTION\s+ITEMS?)\s*:?\s*$/i.test(ln) && !/^\s*(SUMMARY|TASKS|TITLE|BODY|NOTE)\s*:/i.test(ln))
+        .join('\n').trim();
     const summary = grab('SUMMARY').replace(/\*\*/g, '').trim();
     const actionsRaw = (grab('TASKS') || grab('ACTION ITEMS')).replace(/\*\*/g, '').trim();
     return { title: cleanTitle(title), body, summary, actions: cleanActions(actionsRaw.split('\n')) };

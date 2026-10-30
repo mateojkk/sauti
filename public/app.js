@@ -127,19 +127,6 @@ function fillView(note) {
     const gist = note.summary && note.summary !== note.body ? note.summary : '';
     $('dSummary').textContent = gist;
     $('sumSection').hidden = !gist;
-    const box = $('dActions');
-    box.replaceChildren();
-    if (!(note.actions || []).length) {
-        $('actSection').hidden = true;
-    } else {
-        $('actSection').hidden = false;
-        for (const a of note.actions) {
-            const el = document.createElement('div');
-            el.className = 'action';
-            el.textContent = a;
-            box.appendChild(el);
-        }
-    }
 }
 
 function startEdit() {

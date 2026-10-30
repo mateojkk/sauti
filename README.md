@@ -1,6 +1,6 @@
 # Sauti
 
-Talk instead of type. Sauti records on this machine, transcribes with Whisper, and turns the transcript into a structured note (title, body, summary, tasks). Search is local too.
+Talk instead of type. Sauti records on this machine, transcribes with Whisper, and turns the transcript into a structured note (title, body, summary). Search is local too.
 
 The cloud pattern (record → speech-to-text → LLM → dashboard) runs entirely on-device with [QVAC](https://qvac.tether.io). No API keys, no uploads, no internet after the first model download.
 
@@ -37,7 +37,7 @@ QVAC_CONFIG_PATH=./qvac.config.json node quickstart.js
 
 - **R** starts and finishes a recording. **P** pauses. Esc cancels.
 - Click the timer when you are done. Sauti transcribes, writes the note, and indexes it.
-- **Fix transcript** if Whisper missed a word. **Rewrite notes** rebuilds title, body, summary, and tasks from that text.
+- **Fix transcript** if Whisper missed a word. **Rewrite notes** rebuilds title, body, and summary from that text.
 - **Copy** puts the structured note on the clipboard.
 - **Ask** in the sidebar is semantic search over your notes.
 

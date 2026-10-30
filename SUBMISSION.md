@@ -43,7 +43,7 @@ QVAC (Tether's local-AI SDK) runs every model in-process on the laptop:
 - **Whisper small Q8_0** for speech-to-text (`SAUTI_ASR` env switch overridable,
   e.g. to `WHISPER_LARGE_V3_TURBO` for maximum accuracy at ~3× the latency)
 - **Qwen3-600M instruct Q4** turns each transcript into title / structured body
-  / summary / tasks — `/no_think` for speed; a small local model can't afford
+  / summary — `/no_think` for speed; a small local model can't afford
   to philosophize
 - **embeddinggemma-300M** with its task-select prompt templates for semantic
   search (documents embedded as "title: … | text: …", queries as

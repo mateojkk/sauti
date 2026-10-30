@@ -27,7 +27,7 @@ If transcribe takes a while, keep talking to camera over the progress bar. Do no
 **Do:** press R (or Record). Pause is visible. Speak clearly, a little slower than usual.
 
 **Say into the mic (this is the note):**
-> Okay, capturing this so I don't have to type it later. Three things. First, the Cloud to Pocket idea: take a hosted pipeline and run it locally with QVAC. Second, the product: I talk, Sauti transcribes, then it writes a real note, title, body, summary, and tasks, not a raw dump. Third, follow-ups I actually have: record the disconnected demo, then submit on DoraHacks. That's it.
+> Okay, capturing this so I don't have to type it later. Cloud to Pocket means taking a hosted pipeline and running it locally with QVAC. The product is I talk, then it transcribes and writes a real note with title, body, summary, and tasks, not a raw dump. Follow-ups I actually have: record the disconnected demo, then submit on DoraHacks. That's it.
 
 **Do:** click the timer (Done). Let the progress bar run. Stay on the window.
 

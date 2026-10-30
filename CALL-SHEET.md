@@ -19,7 +19,7 @@
 ## SHOT 2 — RECORD — 0:12–0:50
 **Do:** click **Record** (or R).
 **Speak into the mic:** (say *Sauti* slowly — small Whisper garbles brand words if rushed; that's fine, Shot 3 turns it into the feature)
-> Okay, three things for later. First: the idea — a full voice-notes pipeline from the cloud, pulled down to run locally with QVAC. Second: the product — I talk, Sauti writes a real note: title, body, summary and tasks. Third: upload this to DoraHacks before five. Done.
+> Okay, three things for later. First: the idea — a full cloud voice-notes pipeline, pulled down to run locally with QVAC. Second: the product — I talk, Sauti writes a real note with a title, a body, and a summary. Third: upload this to DoraHacks before five. Done.
 
 **Do:** click the **timer** to finish. Progress bar runs ~30 s — keep talking over it, do not apologize:
 > That progress bar is Whisper and a small Qwen running on this CPU right now. Wi-Fi is still off.
@@ -33,8 +33,8 @@
 3. `their ARCs` (or whatever) → `DoraHacks`
 Scan the rest once; fix anything obviously wrong; **save** → click **Rewrite notes** (bar ~15 s):
 **Say:**
-> Small offline models miss product names — of course they do. So I fix the transcript instead of re-recording, and the note rewrites itself out of the corrected text. Title, body, tasks — all local.
-**Do:** scroll the rebuilt note → pause on **Tasks** → click **Copy** once. Optional: play 2 s of audio first, then pause.
+> Small offline models miss product names — of course they do. So I fix the transcript instead of re-recording, and the note rewrites itself out of the corrected text. Title, body, summary — all local.
+**Do:** scroll the rebuilt note → pause on **Summary** → click **Copy** once. Optional: play 2 s of audio first, then pause.
 
 ## SHOT 4 — SEARCH — +30 s
 **Do:** click the search bar (or **/**) → type `life is not easy` → click **Ask**.
