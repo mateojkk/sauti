@@ -203,6 +203,38 @@ $('playSeek').addEventListener('input', () => {
     audio.currentTime = Number($('playSeek').value);
 });
 
+$('dSaveFile').onclick = async () => {
+    if (!openDraft) return;
+    let md;
+    try {
+        const res = await fetch(`/api/note/${openDraft.id}/md`);
+        if (!res.ok) throw new Error('build failed');
+        md = await res.text();
+    } catch {
+        alert('Could not build the file.');
+        return;
+    }
+    const name = (openDraft.title || 'voice note').replace(/[^\w '-]/g, '').trim().slice(0, 48) || 'voice note';
+    try {
+        if (window.sauti?.saveToFile) {
+            const out = await window.sauti.saveToFile(md, `${name}.md`);
+            if (out?.saved) {
+                $('saveState').textContent = 'Saved';
+                setTimeout(() => { if ($('saveState').textContent === 'Saved') $('saveState').textContent = ''; }, 2400);
+            }
+        } else {
+            // Plain browser fallback: download lands in the Downloads folder.
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(new Blob([md], { type: 'text/markdown' }));
+            a.download = `${name}.md`;
+            a.click();
+            setTimeout(() => URL.revokeObjectURL(a.href), 1500);
+        }
+    } catch {
+        alert('Could not save the file.');
+    }
+};
+
 $('dCopy').onclick = async () => {
     if (!openDraft) return;
     const n = openDraft;

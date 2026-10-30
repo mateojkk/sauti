@@ -2,7 +2,8 @@
 // Run with: npm run app  (requires `node` on PATH for the child server)
 import { spawn } from 'node:child_process';
 import { join } from 'node:path';
-import { app, BrowserWindow, Menu, dialog } from 'electron';
+import { writeFile } from 'node:fs/promises';
+import { app, BrowserWindow, Menu, dialog, ipcMain } from 'electron';
 
 const ROOT = app.getAppPath();
 const PORT = 8787;
@@ -35,6 +36,18 @@ if (!app.requestSingleInstanceLock()) {
 
     app.whenReady().then(async () => {
         Menu.setApplicationMenu(null);
+        ipcMain.handle('sauti-save-to-file', async (_e, { content, fileName }) => {
+            const safeName = String(fileName || 'note.md').replace(/[^\w .-]/g, '_').slice(0, 80) || 'note.md';
+            const win2 = BrowserWindow.getAllWindows()[0];
+            const res = await dialog.showSaveDialog(win2, {
+                title: 'Save note',
+                defaultPath: join(app.getPath('home'), safeName),
+                filters: [{ name: 'Markdown note', extensions: ['md', 'txt'] }],
+            });
+            if (res.canceled || !res.filePath) return { cancelled: true };
+            await writeFile(res.filePath, String(content ?? ''), 'utf8');
+            return { saved: true, path: res.filePath };
+        });
         child = spawn('node', ['src/server.js'], {
             cwd: ROOT,
             env: { ...process.env, QVAC_CONFIG_PATH: join(ROOT, 'qvac.config.json') },
@@ -64,6 +77,7 @@ if (!app.requestSingleInstanceLock()) {
                 contextIsolation: true,
                 nodeIntegration: false,
                 sandbox: true,
+                preload: join(ROOT, 'preload.js'),
             },
         });
         win.on('close', () => { quitting = true; });

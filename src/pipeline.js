@@ -303,7 +303,8 @@ export async function deleteNote(id) {
     return removed;
 }
 
-function writeMarkdown(note) {
+/** Human-readable markdown rendering of a note — file export + .md sidecar use this. */
+export function noteToMarkdown(note) {
     return [
         `# ${note.title}`,
         '',
@@ -336,7 +337,7 @@ export async function updateNote(id, patch) {
             : existing.actions,
         transcript: patch.transcript != null ? String(patch.transcript) : existing.transcript,
     };
-    await writeFile(join(NOTES_DIR, `${safe}.md`), writeMarkdown(note));
+    await writeFile(join(NOTES_DIR, `${safe}.md`), noteToMarkdown(note));
     insertNote(note);
     try { removeVector(safe); } catch { /* reindex will rebuild */ }
     return note;
@@ -345,7 +346,7 @@ export async function updateNote(id, patch) {
 /** Save a note: one row in the DB + a human-readable markdown export next to it. Returns the note id. */
 export async function saveNote(note) {
     note.id = new Date(note.createdAt).toISOString().replace(/[:.]/g, '-');
-    await writeFile(join(NOTES_DIR, `${note.id}.md`), writeMarkdown(note));
+    await writeFile(join(NOTES_DIR, `${note.id}.md`), noteToMarkdown(note));
     insertNote(note);
     return note.id;
 }
@@ -398,7 +399,7 @@ export async function rebuildFromTranscript(id) {
     if (!String(existing.transcript || '').trim()) throw new Error('no transcript to rebuild from');
     const note = { ...existing, timing: { ...(existing.timing || {}) } };
     await writeStructuredNotes(note);
-    await writeFile(join(NOTES_DIR, `${note.id}.md`), writeMarkdown(note));
+    await writeFile(join(NOTES_DIR, `${note.id}.md`), noteToMarkdown(note));
     insertNote(note);
     try { removeVector(note.id); } catch { /* reindex will rebuild */ }
     return note;

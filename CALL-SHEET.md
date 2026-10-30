@@ -7,6 +7,7 @@
 - LEFT rail — search bar + **Ask**, note cards (title · duration · gist · day)
 - CENTER — hero "Talk. Get notes."
 - BOTTOM recbar — **Record** (or **R**) → timer (**click it to finish**) · **Upload** · **EN** pill
+- NOTE TOOLBAR — Back · **Save to file** (native folder picker) · Copy · Rewrite notes · Fix transcript · Delete
 - Never: browser, DevTools, terminal. Only the Sauti window + (once) the system Wi-Fi menu.
 
 ---
@@ -34,7 +35,10 @@
 Scan the rest once; fix anything obviously wrong; **save** → click **Rewrite notes** (bar ~15 s):
 **Say:**
 > Small offline models miss product names — of course they do. So I fix the transcript instead of re-recording, and the note rewrites itself out of the corrected text. Title, body, summary — all local.
-**Do:** scroll the rebuilt note → pause on **Summary** → click **Copy** once. Optional: play 2 s of audio first, then pause.
+**Do:** scroll the rebuilt note → pause on **Summary** → click **Copy** once. Then click **Save to file** — the native folder picker opens, pick Desktop or Documents, hit Save. (Two desktop-app natives in one shot: that's not a browser tab.)
+**Say:**
+> And it exports: my folder, my file, Markdown — same note I'd ship my team. Everything on this machine.
+Optional: play 2 s of audio first, then pause.
 
 ## SHOT 4 — SEARCH — +30 s
 **Do:** click the search bar (or **/**) → type `life is not easy` → click **Ask**.

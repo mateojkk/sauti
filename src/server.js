@@ -7,7 +7,7 @@ import { createServer } from 'node:http';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join, extname } from 'node:path';
-import { processAudio, deleteNote, updateNote, rebuildFromTranscript } from './pipeline.js';
+import { processAudio, deleteNote, updateNote, rebuildFromTranscript, noteToMarkdown } from './pipeline.js';
 import { buildIndex, search } from './search.js';
 import { listNotes, getNote } from './db.js';
 
@@ -81,6 +81,16 @@ const server = createServer(async (req, res) => {
             const id = url.pathname.split('/').pop();
             const removed = await deleteNote(id);
             return json(res, removed ? 200 : 404, { removed });
+        }
+
+        if (url.pathname.startsWith('/api/note/') && url.pathname.endsWith('/md') && req.method === 'GET') {
+            const id = url.pathname.split('/')[3];
+            const note = getNote(id);
+            if (!note) return json(res, 404, { error: 'no such note' });
+            const md = noteToMarkdown(note);
+            const body = Buffer.from(md, 'utf8');
+            res.writeHead(200, { 'Content-Type': 'text/markdown; charset=utf-8', 'Content-Length': body.length });
+            return res.end(body);
         }
 
         if (url.pathname.startsWith('/api/note/') && req.method === 'GET') {
