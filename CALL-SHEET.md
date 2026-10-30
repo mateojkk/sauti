@@ -18,17 +18,23 @@
 
 ## SHOT 2 — RECORD — 0:12–0:50
 **Do:** click **Record** (or R).
-**Speak into the mic:**
+**Speak into the mic:** (say *Sauti* slowly — small Whisper garbles brand words if rushed; that's fine, Shot 3 turns it into the feature)
 > Okay, three things for later. First: the idea — a full voice-notes pipeline from the cloud, pulled down to run locally with QVAC. Second: the product — I talk, Sauti writes a real note: title, body, summary and tasks. Third: upload this to DoraHacks before five. Done.
 
-**Do:** click the **timer** to finish. Progress bar runs — keep talking over it, do not apologize:
+**Do:** click the **timer** to finish. Progress bar runs ~30 s — keep talking over it, do not apologize:
 > That progress bar is Whisper and a small Qwen running on this CPU right now. Wi-Fi is still off.
 
-## SHOT 3 — THE NOTE — +35 s
-**On screen:** the new card pops into the rail → click it → note view.
-**Do:** scroll the body slowly → pause on **Tasks** → (optional: play 2 s of audio) → click **Copy** once.
+## SHOT 3 — FIX + REWRITE (the feature) — +60 s
+**On screen:** the new card lands in the rail → click it → note view.
+**Expect garbled brand words in the transcript** ("Sauti", "QVAC", "DoraHacks"). That's the moment — do NOT reshoot:
+**Do:** click **Fix transcript** → replace exactly three fragments:
+1. `run localeo QVAC` (or whatever it made of "run locally with QVAC") → `run locally with QVAC`
+2. `SoundT-Rise erynotes` (or whatever) → `Sauti writes a real note`
+3. `their ARCs` (or whatever) → `DoraHacks`
+Scan the rest once; fix anything obviously wrong; **save** → click **Rewrite notes** (bar ~15 s):
 **Say:**
-> One recording in — this note out. Title, body, tasks. It's one local SQLite file, and the audio is still here if I ever need the source.
+> Small offline models miss product names — of course they do. So I fix the transcript instead of re-recording, and the note rewrites itself out of the corrected text. Title, body, tasks — all local.
+**Do:** scroll the rebuilt note → pause on **Tasks** → click **Copy** once. Optional: play 2 s of audio first, then pause.
 
 ## SHOT 4 — SEARCH — +30 s
 **Do:** click the search bar (or **/**) → type `life is not easy` → click **Ask**.
@@ -45,8 +51,8 @@
 ---
 
 ## Safety
-- Title comes out ALL-CAPS or odd? It's honest small-model output — read past it, **do not reshoot the note for cosmetics**.
-- Live write-up slow on camera? Fill the gap with the Shot 2 line about the CPU; 35 s of bar is *the point*, not a defect.
-- Record button misbehaves on camera: click **Upload**, drop `test-audio/recordings/1793313947119-recording.wav`, and continue with the same script (it's the 32 s note we validated at 30 s pipeline time).
-- Cleaning the corpus before the take is allowed and looks good on camera: open the morning dry-run note and delete it — the rail then shows yesterday's note + the one that lands mid-take.
-- Post-take: re-record only if a phrase was unintelligible to YOU, not because the model paraphrased your words.
+- **Do not switch to large-v3-turbo for the live take** — tested on the exact same audio: it still garbles "Sauti" AND took 1 m 44 s on this machine (turbo + Chromium swapping in 8 GB). Small + Fix transcript is the play. Turbo stays documented as the accuracy upgrade path in the README.
+- Title/body odd even after Fix → Rewrite? Rewriting runs the local LLM again — it usually improves; if one task line reads oddly, say the honest line: "small model hiccups, and I still own the recording to check against."
+- Live write-up slow on camera? Fill the gap with Shot 2's CPU line; 30 s of bar is *the point*, not a defect.
+- Record button misbehaves on camera: click **Upload**, drop `test-audio/recordings/1793313947119-recording.wav`, and continue with the same script (32 s note we validated at ~30 s pipeline time).
+- Re-record only if YOUR delivery was unintelligible — not because the model paraphrased you.
