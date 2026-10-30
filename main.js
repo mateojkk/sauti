@@ -70,6 +70,15 @@ if (!app.requestSingleInstanceLock()) {
         win.once('ready-to-show', () => win.show());
         win.on('page-title-updated', (e) => e.preventDefault()); // keep "Sauti"
         win.loadURL(URL);
+        // Refresh keys: the app menu is null, so F5 / Ctrl+R must be re-bound here.
+        win.webContents.on('before-input-event', (e, input) => {
+            if (input.type !== 'keyDown') return;
+            const r = input.key.toLowerCase() === 'r';
+            if (input.key === 'F5' || (r && input.control)) {
+                win.webContents.reload();
+                e.preventDefault();
+            }
+        });
     });
 }
 
