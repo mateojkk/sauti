@@ -40,8 +40,8 @@ Sauti rebuilds the note from that text — no re-recording.
 
 QVAC (Tether's local-AI SDK) runs every model in-process on the laptop:
 
-- **Whisper small Q8_0** for speech-to-text (`SAUTI_ASR` env switch overridable,
-  e.g. to `WHISPER_LARGE_V3_TURBO` for maximum accuracy at ~3× the latency)
+- **Whisper large-v3-turbo** for speech-to-text (accuracy-first default; `SAUTI_ASR`
+  env switch, e.g. `WHISPER_SMALL_Q8_0` for ~3× faster takes on slower machines)
 - **Qwen3-600M instruct Q4** turns each transcript into title / structured body
   / summary — `/no_think` for speed; a small local model can't afford
   to philosophize
@@ -82,13 +82,12 @@ vector, and its file cleanly.
 - Local inference is slower than a GPU cloud — that's what this track accepts
 - English-first: the ASR language selector includes Swahili, but we only claim
   what we demo (English); selection of other models via env override
-- Small model, not large: near-real-time transcribe was chosen over max
-  accuracy; quality at whisper-large-v3-turbo (~1.6 GB, RTF ≈ 1.0 on this
-  laptop) was validated and is the documented upgrade path
+- Accuracy over speed: large-v3-turbo (~1.6 GB) is the shipping default; its
+  ~90 s transcribe on an 8 GB laptop is edited out of the demo video, not hidden
 
 ## Disclosures
 
-- QVAC SDK `@qvac/sdk` v0.22.0 (npm); models WHISPER_SMALL_Q8_0 (x1.bin),
+- QVAC SDK `@qvac/sdk` v0.22.0 (npm); models WHISPER_LARGE_V3_TURBO (ggml-large-v3-turbo.bin),
   QWEN3_600M_INST_Q4, EMBEDDINGGEMMA_300M_Q4_0 — downloaded from the QVAC
   model registry once, cached under `~/.qvac/models/` before the demo
 - Node v22.23.4, npm 10.9.9

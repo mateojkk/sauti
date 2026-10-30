@@ -16,12 +16,12 @@
 **Say:**
 > Most voice-notes apps ship your voice to someone else's API. Sauti runs the whole pipeline on this laptop — speech-to-text, a writing model, even search — with nothing in the cloud. Watch.
 
-## SHOT 2 — RECORD — 0:12–0:50
+## SHOT 2 — RECORD — 0:12–2:00 (bar runs ~90 s; edited out)
 **Do:** click **Record** (or R).
 **Speak into the mic:** (say *Sauti* slowly — small Whisper garbles brand words if rushed; that's fine, Shot 3 turns it into the feature)
 > Okay, three things for later. First: the idea — a full cloud voice-notes pipeline, pulled down to run locally with QVAC. Second: the product — I talk, Sauti writes a real note with a title, a body, and a summary. Third: upload this to DoraHacks before five. Done.
 
-**Do:** click the **timer** to finish. Progress bar runs ~30 s — keep talking over it, do not apologize:
+**Do:** click the **timer** to finish. The bar runs ~90 s (turbo = accuracy-first). Talk to camera while it runs; the wait itself gets cut out in your edit:
 > That progress bar is Whisper and a small Qwen running on this CPU right now. Wi-Fi is still off.
 
 ## SHOT 3 — FIX + REWRITE (the feature) — +60 s
@@ -51,7 +51,7 @@ Scan the rest once; fix anything obviously wrong; **save** → click **Rewrite n
 ---
 
 ## Safety
-- **Do not switch to large-v3-turbo for the live take** — tested on the exact same audio: it still garbles "Sauti" AND took 1 m 44 s on this machine (turbo + Chromium swapping in 8 GB). Small + Fix transcript is the play. Turbo stays documented as the accuracy upgrade path in the README.
+- Turbo is the shipping default (accuracy-first). The ~90 s bar is edited out of the final video; say the CPU line into the shot anyway — it costs 8 seconds and sells the on-device story.
 - Title/body odd even after Fix → Rewrite? Rewriting runs the local LLM again — it usually improves; if one task line reads oddly, say the honest line: "small model hiccups, and I still own the recording to check against."
 - Live write-up slow on camera? Fill the gap with Shot 2's CPU line; 30 s of bar is *the point*, not a defect.
 - Record button misbehaves on camera: click **Upload**, drop `test-audio/recordings/1793313947119-recording.wav`, and continue with the same script (32 s note we validated at ~30 s pipeline time).

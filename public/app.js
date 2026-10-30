@@ -159,7 +159,6 @@ async function saveEdits() {
     openDraft = note;
     setEditing(false);
     fillView(note);
-    $('dTranscript').textContent = note.transcript || '';
     $('dWhen').textContent = `${relDate(note.createdAt)} · ${note.language}${fmtDur(note.durationSec) ? ` · ${fmtDur(note.durationSec)}` : ''}`;
     $('saveState').textContent = 'Saved. Rewrite notes to refresh the structure.';
     await loadNotes();
@@ -182,7 +181,6 @@ async function openNote(id) {
     $('playCur').textContent = '0:00';
     $('playSeek').value = 0;
     fillView(note);
-    $('dTranscript').textContent = note.transcript || '';
     renderList();
 }
 
@@ -229,7 +227,6 @@ $('dRebuild').onclick = async () => {
         const { note } = await res.json();
         openDraft = note;
         fillView(note);
-        $('dTranscript').textContent = note.transcript || '';
         $('dWhen').textContent = `${relDate(note.createdAt)} · ${note.language}${fmtDur(note.durationSec) ? ` · ${fmtDur(note.durationSec)}` : ''}`;
         await loadNotes();
     } catch (err) {

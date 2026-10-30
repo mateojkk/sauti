@@ -17,7 +17,7 @@ import { join } from 'node:path';
 import { insertNote, deleteNote as deleteNoteRow, removeVector, getNote, NOTES_DIR } from './db.js';
 
 export const MODELS = {
-    asr: process.env.SAUTI_ASR ?? 'WHISPER_SMALL_Q8_0',
+    asr: process.env.SAUTI_ASR ?? 'WHISPER_LARGE_V3_TURBO',
     llm: process.env.SAUTI_LLM ?? 'QWEN3_600M_INST_Q4',
 };
 

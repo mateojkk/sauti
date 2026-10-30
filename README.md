@@ -56,11 +56,11 @@ node cli.js search "what did I say about uploads" [--k 5]
 
 ## Models
 
-Defaults (override with env):
+Defaults (all local; override with env):
 
 | Stage | Default | Env |
 | --- | --- | --- |
-| Speech to text | Whisper small Q8_0 | `SAUTI_ASR` (e.g. `WHISPER_LARGE_V3_TURBO`) |
+| Speech to text | Whisper large-v3-turbo (accuracy-first) | `SAUTI_ASR` (e.g. `WHISPER_SMALL_Q8_0` for ~3x faster takes) |
 | Structured note | Qwen3 600M instruct Q4 | `SAUTI_LLM` |
 | Search | embeddinggemma 300M | (wired in `src/search.js`) |
 
