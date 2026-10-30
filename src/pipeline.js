@@ -303,20 +303,21 @@ export async function deleteNote(id) {
     return removed;
 }
 
-/** Human-readable markdown rendering of a note — file export + .md sidecar use this. */
-export function noteToMarkdown(note) {
+/** Human-readable markdown rendering of a note — file export + .md sidecar use this.
+ *  Export mode: no internal metadata, and no Transcript section when the body
+ *  already came from this exact speech (the transcript IS the note). */
+export function noteToMarkdown(note, { includeMeta = true } = {}) {
+    const body = (note.body || '').trim();
+    const transcript = (note.transcript || '').trim();
+    const same = norm(body) === norm(transcript) && body !== '';
     return [
         `# ${note.title}`,
-        '',
-        `*${new Date(note.createdAt).toISOString()} · ${note.audioFile}*`,
-        '',
-        note.body || '',
+        ...(includeMeta ? ['', `*${new Date(note.createdAt).toISOString()} · ${note.audioFile}*`, ''] : ['']),
+        body,
         '',
         ...(note.summary ? ['## Summary', note.summary, ''] : []),
         ...(note.actions.length ? ['## Tasks', ...note.actions.map((a) => `- ${a}`), ''] : []),
-        '## Transcript',
-        note.transcript,
-        '',
+        ...(!same && transcript ? ['## Transcript', transcript, ''] : []),
         '---',
         `_models: asr=${note.models?.asr ?? ''}, llm=${note.models?.llm ?? ''}. timings: asr=${((note.timing?.transcribeMs ?? 0) / 1000).toFixed(1)}s, llm=${((note.timing?.llmMs ?? 0) / 1000).toFixed(1)}s_`,
     ].join('\n');

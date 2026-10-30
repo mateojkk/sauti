@@ -87,7 +87,7 @@ const server = createServer(async (req, res) => {
             const id = url.pathname.split('/')[3];
             const note = getNote(id);
             if (!note) return json(res, 404, { error: 'no such note' });
-            const md = noteToMarkdown(note);
+            const md = noteToMarkdown(note, { includeMeta: false });
             const body = Buffer.from(md, 'utf8');
             res.writeHead(200, { 'Content-Type': 'text/markdown; charset=utf-8', 'Content-Length': body.length });
             return res.end(body);
