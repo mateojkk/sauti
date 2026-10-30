@@ -8,7 +8,7 @@ The cloud pattern (record → speech-to-text → LLM → dashboard) runs entirel
 
 ## Requirements
 
-- Node.js 22.5+ (built-in `node:sqlite`)
+- Node.js 22.17+ (QVAC SDK requirement; uses the built-in `node:sqlite`)
 - Linux x64 (validated). A few GB of disk for Whisper + Qwen + embeddings
 - A microphone, or a WAV/MP3/M4A file to upload
 
