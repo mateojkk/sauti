@@ -64,18 +64,14 @@ export async function transcribeFile(modelId, audioPath) {
 
 /** Stage 2: transcript → typed note + short summary + tasks. */
 export async function summarize(modelId, transcript) {
-    const SYSTEM = `Turn spoken words into a structured note.
+    const SYSTEM = `Turn the transcript into a usable note. Write the content they said, cleaned up.
 
-TITLE:
-NOTE:
-SUMMARY:
-TASKS:
+TITLE a few words naming the topic
+NOTE full sentences or real bullets of what they said. If they listed points, write each point out. Never a skeleton like "1st: x. 2nd: y."
+SUMMARY one sentence
+TASKS todos they mentioned, or none
 
-TITLE = a short name for this recording
-NOTE = cleaned up, as if typed: short headings and bullets when that helps, otherwise a clear first-person note
-SUMMARY = one or two sentences, not a copy of NOTE
-TASKS = real to-dos if mentioned, else none
-Facts only. Never copy these instructions.`;
+Do not copy these labels into the title or the note. Do not repeat yourself. Facts only.`;
     const history = [
         { role: 'system', content: SYSTEM },
         { role: 'user', content: `Transcript:\n${transcript}\n\nNotes: /no_think` },
@@ -93,15 +89,17 @@ Facts only. Never copy these instructions.`;
     const parsed = parseNotes(cleaned);
     // Small-model guardrails: cap the title, drop empty summary, never blank.
     parsed.title = parsed.title.split(/\s+/).slice(0, 8).join(' ');
-    if (!parsed.title || isPromptLeak(parsed.title)) {
-        parsed.title = titleFromText(parsed.body || transcript);
+    if (!parsed.title || isPromptLeak(parsed.title) || isLabelHeading(parsed.title) || isJunkBody(parsed.title) || isFragmentTitle(parsed.title)) {
+        parsed.title = titleFromText(transcript);
     }
-    if (!parsed.body || isPromptLeak(parsed.body)) {
-        parsed.body = (!parsed.summary || isPromptLeak(parsed.summary))
-            ? transcript.slice(0, 280)
-            : parsed.summary;
+    if (!parsed.body || isPromptLeak(parsed.body) || isJunkBody(parsed.body)) {
+        parsed.body = tidySpoken(transcript);
+        parsed.summary = '';
+        parsed.actions = parsed.actions.filter((a) => !isJunkBody(a) && !isLabelHeading(a));
     }
-    parsed.summary = isPromptLeak(parsed.summary) ? '' : dedupeSummary(parsed.body, parsed.summary);
+    parsed.summary = (isPromptLeak(parsed.summary) || isJunkBody(parsed.summary))
+        ? ''
+        : dedupeSummary(parsed.body, parsed.summary);
     parsed.actions = parsed.actions.filter((a) => !containedIn(a, parsed.body));
     return { ...parsed, genMs, tokens, tokensPerSec: +(tokens / (genMs / 1000)).toFixed(1) };
 }
@@ -170,8 +168,42 @@ function isPromptLeak(text) {
     return /title case|all caps|2-6 words|max \d+ words|not all caps|short title|first person|do not copy|one sentence/i.test(text);
 }
 
+function isLabelHeading(text) {
+    return /^(NOTE|TITLE|SUMMARY|TASKS|BODY)\b/i.test(String(text).trim());
+}
+
+/** Tiny models often emit a numbered skeleton instead of a note. */
+function isJunkBody(text) {
+    const t = String(text).trim();
+    if (!t) return true;
+    if (isLabelHeading(t)) return true;
+    const ordinals = t.match(/\b\d+\s*(st|nd|rd|th)\s*:/gi) || [];
+    if (ordinals.length >= 3) return true;
+    const labeled = t.match(/\b(first|second|third|1st|2nd|3rd|\d+th)\s*:/gi) || [];
+    if (labeled.length >= 3) return true;
+    const nums = t.match(/(?:^|\n)\s*\d+[.)]\s/g) || [];
+    if (nums.length >= 6) return true;
+    const words = t.toLowerCase().split(/\s+/).filter(Boolean);
+    if (words.length > 24) {
+        const tri = new Map();
+        for (let i = 0; i < words.length - 2; i++) {
+            const k = words.slice(i, i + 3).join(' ');
+            const n = (tri.get(k) || 0) + 1;
+            if (n >= 3) return true;
+            tri.set(k, n);
+        }
+    }
+    return false;
+}
+
+function tidySpoken(transcript) {
+    return String(transcript).replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
+}
+
 function titleFromText(text) {
-    const line = String(text).split(/\n/).map((s) => s.replace(/^[-*#\s]+/, '').trim()).find(Boolean) || '';
+    let line = String(text).replace(/\s+/g, ' ').trim();
+    line = line.replace(/^(okay|ok|um+|uh+|so|well|alright)[,.\s]+/i, '');
+    line = line.replace(/^[^.]{0,80}don't have to type it later[,.\s]*/i, '');
     const words = line.replace(/[^\w\s'-]/g, ' ').trim().split(/\s+/).filter(Boolean).slice(0, 6);
     if (words.length < 2) return 'Voice note';
     return words.map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
@@ -188,6 +220,19 @@ function cleanTitle(t) {
         title = title.toLowerCase().replace(/\b([a-z])/g, (ch) => ch.toUpperCase());
     }
     return title;
+}
+
+/** Mid-sentence echoes the model copies back (", body, summary and tax.", "title, body, tasks").
+    These are never real note titles — reject and speak from the transcript instead. */
+function isFragmentTitle(t) {
+    const s = String(t).trim();
+    if (!s) return true;
+    if (/^[,.;:–—\-\s]/.test(s)) return true;                                  // starts with punctuation
+    if (/^(and|or|with|but)\b/i.test(s)) return true;                          // starts with a conjunction
+    if (/\b(summary|body|tasks|transcript)\b/i.test(s) && (/and\b|,/i.test(s))) return true; // template echo list
+    if (/[,;:]$/.test(s)) return true;                                        // truncated mid-phrase
+    if (s.split(/\s+/).length < 2) return true;                               // single word is a topic, not a title
+    return false;
 }
 
 function norm(s) {
