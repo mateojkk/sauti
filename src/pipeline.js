@@ -318,8 +318,10 @@ export function noteToMarkdown(note, { includeMeta = true } = {}) {
         ...(note.summary ? ['## Summary', note.summary, ''] : []),
         ...(note.actions.length ? ['## Tasks', ...note.actions.map((a) => `- ${a}`), ''] : []),
         ...(!same && transcript ? ['## Transcript', transcript, ''] : []),
-        '---',
-        `_models: asr=${note.models?.asr ?? ''}, llm=${note.models?.llm ?? ''}. timings: asr=${((note.timing?.transcribeMs ?? 0) / 1000).toFixed(1)}s, llm=${((note.timing?.llmMs ?? 0) / 1000).toFixed(1)}s_`,
+        ...(includeMeta ? [
+            '---',
+            `_models: asr=${note.models?.asr ?? ''}, llm=${note.models?.llm ?? ''}. timings: asr=${((note.timing?.transcribeMs ?? 0) / 1000).toFixed(1)}s, llm=${((note.timing?.llmMs ?? 0) / 1000).toFixed(1)}s_`,
+        ] : []),
     ].join('\n');
 }
 
