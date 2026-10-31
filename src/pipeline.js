@@ -62,15 +62,16 @@ export async function transcribeFile(modelId, audioPath) {
     return { transcript: text.trim(), inferMs: Date.now() - t0 };
 }
 
-/** Stage 2: transcript → structured note + one-line summary. No tasks — Sauti writes down what you hear. */
+/** Stage 2: clean the transcript into a typed note. Not a recap, not a theme essay. */
 export async function summarize(modelId, transcript) {
-    const SYSTEM = `Turn the transcript into a usable note. Write the content they said, cleaned up.
+    const SYSTEM = `Type up this voice recording as a real note. Keep the speaker's claims and order. Fix punctuation. Drop um/uh.
 
-TITLE a few words naming the topic
-NOTE full sentences or real bullets of what they said. If they listed points, write each point out. Never a skeleton like "1st: x. 2nd: y."
-SUMMARY one sentence of what this note is about
-
-Do not copy these labels into the title or the note. Do not repeat yourself. Facts only.`;
+TITLE a few of their words, not a magazine headline
+NOTE structured from what they said:
+- paragraphs when they talked in prose
+- a short ## heading when the topic shifts
+- - bullets when they listed items
+Do not write a recap. Do not write "this note highlights". Do not invent a moral or a Summary section.`;
     const history = [
         { role: 'system', content: SYSTEM },
         { role: 'user', content: `Transcript:\n${transcript}\n\nNotes: /no_think` },
@@ -88,18 +89,15 @@ Do not copy these labels into the title or the note. Do not repeat yourself. Fac
     const parsed = parseNotes(cleaned);
     // Small-model guardrails: cap the title, drop empty summary, never blank.
     parsed.title = parsed.title.split(/\s+/).slice(0, 8).join(' ');
-    if (!parsed.title || isPromptLeak(parsed.title) || isLabelHeading(parsed.title) || isJunkBody(parsed.title) || isFragmentTitle(parsed.title)) {
+    if (!parsed.title || isPromptLeak(parsed.title) || isLabelHeading(parsed.title) || isJunkBody(parsed.title) || isFragmentTitle(parsed.title) || isEssayTitle(parsed.title)) {
         parsed.title = titleFromText(transcript);
     }
-    if (!parsed.body || isPromptLeak(parsed.body) || isJunkBody(parsed.body)) {
+    if (!parsed.body || isPromptLeak(parsed.body) || isJunkBody(parsed.body) || isEditorial(parsed.body) || !followsTranscript(parsed.body, transcript)) {
         parsed.body = tidySpoken(transcript);
-        parsed.summary = '';
-        parsed.actions = parsed.actions.filter((a) => !isJunkBody(a) && !isLabelHeading(a));
     }
-    parsed.summary = (isPromptLeak(parsed.summary) || isJunkBody(parsed.summary))
-        ? ''
-        : dedupeSummary(parsed.body, parsed.summary);
-    parsed.actions = parsed.actions.filter((a) => !containedIn(a, parsed.body));
+    parsed.body = parsed.body.replace(/\u2014/g, ', ');
+    parsed.summary = '';
+    parsed.actions = [];
     return { ...parsed, genMs, tokens, tokensPerSec: +(tokens / (genMs / 1000)).toFixed(1) };
 }
 
@@ -174,6 +172,27 @@ function isLabelHeading(text) {
     return /^(NOTE|TITLE|SUMMARY|TASKS|BODY)\b/i.test(String(text).trim());
 }
 
+function isEssayTitle(text) {
+    return /^(the )?(power|importance|art|beauty|value|magic|gift) of\b/i.test(String(text).trim());
+}
+
+function isEditorial(text) {
+    return /this note highlights|the importance of|profound impact|make a (big|real|profound) difference|simple acts of kindness/i.test(text);
+}
+
+const STOP = new Set('the a an and or of to in on for with is are was were be been being it this that those these can will would could should about from as at by not'.split(' '));
+
+function contentTokens(s) {
+    return String(s).toLowerCase().replace(/[^\w\s']/g, ' ').split(/\s+/).filter((w) => w.length > 2 && !STOP.has(w));
+}
+
+function followsTranscript(body, transcript) {
+    const b = contentTokens(body);
+    const t = new Set(contentTokens(transcript));
+    if (b.length < 6) return true;
+    return b.filter((w) => t.has(w)).length / b.length >= 0.4;
+}
+
 /** Tiny models often emit a numbered skeleton instead of a note. */
 function isJunkBody(text) {
     const t = String(text).trim();
@@ -233,7 +252,7 @@ function isFragmentTitle(t) {
     if (/^(and|or|with|but)\b/i.test(s)) return true;                          // starts with a conjunction
     if (/\b(summary|body|tasks|transcript)\b/i.test(s) && (/and\b|,/i.test(s))) return true; // template echo list
     if (/[,;:]$/.test(s)) return true;                                        // truncated mid-phrase
-    if (s.split(/\s+/).length < 2) return true;                               // single word is a topic, not a title
+    if (s.split(/\s+/).length < 2) return true;
     return false;
 }
 
@@ -340,6 +359,8 @@ export async function updateNote(id, patch) {
             : existing.actions,
         transcript: patch.transcript != null ? String(patch.transcript) : existing.transcript,
     };
+    // Fixing the transcript fixes the note: the body IS the corrected speech.
+    if (patch.transcript != null && patch.body == null) note.body = tidySpoken(note.transcript);
     await writeFile(join(NOTES_DIR, `${safe}.md`), noteToMarkdown(note));
     insertNote(note);
     try { removeVector(safe); } catch { /* reindex will rebuild */ }
@@ -380,17 +401,26 @@ export async function processAudio(audioPath, { language = 'en', durationSec = n
     note.transcript = asrOut.transcript;
     note.timing.transcribeMs = asrOut.inferMs;
 
-    await writeStructuredNotes(note);
+    await writeStructuredNotes(note, { verbatimBody: true });
     note.id = await saveNote(note);
     return note;
 }
 
-async function writeStructuredNotes(note) {
+/** The transcript IS the note: a fresh recording shows the spoken words (tidied),
+ *  and the model only contributes the title and summary. Paraphrasing happens solely
+ *  when the user explicitly asks for it via the "Rewrite notes" button. */
+async function writeStructuredNotes(note, { verbatimBody = false } = {}) {
     const llmConstant = await sdkConstant(MODELS.llm);
     const llm = await warmLoad('llm', MODELS.llm, () => timedLoad(llmConstant));
     note.timing.loadLlmMs = llm.loadMs;
     const notes = await summarize(llm.modelId, note.transcript);
-    Object.assign(note, { title: notes.title, body: notes.body, summary: notes.summary, actions: notes.actions });
+    Object.assign(note, {
+        title: notes.title,
+        body: verbatimBody ? tidySpoken(note.transcript) : notes.body,
+        summary: notes.summary,
+        actions: notes.actions,
+    });
+    note.summary = dedupeSummary(note.body, note.summary);
     note.timing.llmMs = notes.genMs;
     note.timing.tokensPerSec = notes.tokensPerSec;
 }

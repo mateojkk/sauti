@@ -20,7 +20,7 @@
 ## SHOT 2 — RECORD — 0:12–2:00 (bar runs ~90 s; edited out)
 **Do:** click **Record** (or R).
 **Speak into the mic:** (say *Sauti* slowly — small Whisper garbles brand words if rushed; that's fine, Shot 3 turns it into the feature)
-> Okay, three things for later. First: the idea — a full cloud voice-notes pipeline, pulled down to run locally with QVAC. Second: the product — I talk, Sauti writes a real note with a title, a body, and a summary. Third: upload this to DoraHacks before five. Done.
+> Okay, capturing this so I don't have to type it later. Cloud to pocket means taking a hosted voice-notes pipeline and running it on this laptop with QVAC. How it works: I talk. It transcribes. It types a structured note, paragraphs and bullets when that helps, not a recap. Still to do: record the disconnected demo, then put it on DoraHacks.
 
 **Do:** click the **timer** to finish. The bar runs ~90 s (turbo = accuracy-first). Talk to camera while it runs; the wait itself gets cut out in your edit:
 > That progress bar is Whisper and a small Qwen running on this CPU right now. Wi-Fi is still off.
@@ -34,7 +34,7 @@
 3. `their ARCs` (or whatever) → `DoraHacks`
 Scan the rest once; fix anything obviously wrong; **save** → click **Rewrite notes** (bar ~15 s):
 **Say:**
-> Small offline models miss product names — of course they do. So I fix the transcript instead of re-recording, and the note rewrites itself out of the corrected text. Title, body, summary — all local.
+> Small offline models miss product names. So I fix the transcript instead of re-recording, and the note rewrites itself from the corrected text. All local.
 **Do:** scroll the rebuilt note → pause on **Summary** → click **Copy** once. Then click **Save to file** — the native folder picker opens, pick Desktop or Documents, hit Save. (Two desktop-app natives in one shot: that's not a browser tab.)
 **Say:**
 > And it exports: my folder, my file, Markdown — same note I'd ship my team. Everything on this machine.

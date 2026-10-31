@@ -27,7 +27,11 @@ If transcribe takes a while, keep talking to camera over the progress bar. Do no
 **Do:** press R (or Record). Pause is visible. Speak clearly, a little slower than usual.
 
 **Say into the mic (this is the note):**
-> Okay, capturing this so I don't have to type it later. Cloud to Pocket means taking a hosted pipeline and running it locally with QVAC. The product is I talk, then it transcribes and writes a real note with title, body, summary, and tasks, not a raw dump. Follow-ups I actually have: record the disconnected demo, then submit on DoraHacks. That's it.
+> Okay, capturing this so I don't have to type it later. Cloud to pocket means taking a hosted voice-notes pipeline and running it on this laptop with QVAC.
+>
+> How it works: I talk. It transcribes. It types a structured note, paragraphs and bullets when that helps, not a recap of the vibe.
+>
+> Still to do: record the disconnected demo, then put it on DoraHacks.
 
 **Do:** click the timer (Done). Let the progress bar run. Stay on the window.
 
@@ -39,7 +43,7 @@ If transcribe takes a while, keep talking to camera over the progress bar. Do no
 **On screen:** the saved note. Scroll the body, summary, tasks, then the transcript. Play one second of audio if it helps, then pause.
 
 **Say:**
-> Same recording, now a note I can actually use. Title, structured body, a gist, and tasks. Transcript is underneath if I need to check a word.
+> Same recording, now a note I can actually use. Title, structured body. Transcript is underneath if I need to check a word.
 
 **If a word is wrong:**
 1. Click **Fix transcript**.

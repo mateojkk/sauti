@@ -168,7 +168,16 @@ kbd {
     color: inherit; font: inherit; padding: 0 0 6px; outline: none;
 }
 .when { margin: 0 0 20px; color: var(--faint); font-size: 13px; }
-.body { margin: 28px 0 0; font-size: 16.5px; line-height: 1.7; white-space: pre-wrap; }
+.body { margin: 28px 0 0; font-size: 16.5px; line-height: 1.7; }
+.body p { margin: 0 0 12px; }
+.body p:last-child { margin-bottom: 0; }
+.body h4 {
+    margin: 20px 0 8px; font-size: 12px; font-weight: 500;
+    letter-spacing: .08em; text-transform: uppercase; color: var(--faint);
+}
+.body h4:first-child { margin-top: 0; }
+.body ul { margin: 0 0 14px; padding: 0 0 0 1.15em; }
+.body li { margin: 0 0 6px; }
 .summary { margin: 0; font-size: 15px; line-height: 1.55; color: var(--mute); }
 .detail textarea.body, .detail textarea.summary, .detail textarea.tasks {
     width: 100%; resize: vertical; background: var(--card); border: 1px solid var(--line);

@@ -123,10 +123,41 @@ function setEditing(on) {
 
 function fillView(note) {
     $('dTitle').textContent = note.title || '';
-    $('dBody').textContent = note.body || '';
+    renderBody($('dBody'), note.body || '');
     const gist = note.summary && note.summary !== note.body ? note.summary : '';
     $('dSummary').textContent = gist;
     $('sumSection').hidden = !gist;
+}
+
+function renderBody(el, body) {
+    el.replaceChildren();
+    let list = null;
+    for (const raw of String(body).split('\n')) {
+        const line = raw.trimEnd();
+        const bullet = line.match(/^\s*[-*]\s+(.+)/);
+        if (bullet) {
+            if (!list) {
+                list = document.createElement('ul');
+                el.appendChild(list);
+            }
+            const li = document.createElement('li');
+            li.textContent = bullet[1];
+            list.appendChild(li);
+            continue;
+        }
+        list = null;
+        if (!line.trim()) continue;
+        const head = line.match(/^\s*#{1,3}\s+(.+)/);
+        if (head) {
+            const h = document.createElement('h4');
+            h.textContent = head[1].trim();
+            el.appendChild(h);
+            continue;
+        }
+        const p = document.createElement('p');
+        p.textContent = line.trim();
+        el.appendChild(p);
+    }
 }
 
 function startEdit() {
